@@ -121,6 +121,38 @@ export default {
       ],
     },
     {
+      name: 'role',
+      title: 'Access Role',
+      type: 'reference',
+      to: [{ type: 'roleConfig' }],
+      description: 'App login role and permissions',
+      validation: (Rule: { required: () => unknown }) => Rule.required(),
+    },
+    {
+      name: 'passwordHash',
+      title: 'Password Hash',
+      type: 'string',
+      readOnly: true,
+    },
+    {
+      name: 'mustSetPassword',
+      title: 'Must Set Password',
+      type: 'boolean',
+      initialValue: true,
+    },
+    {
+      name: 'permissions',
+      title: 'Custom Permissions',
+      type: 'array',
+      of: [{ type: 'string' }],
+      description: 'Leave empty to use role defaults',
+    },
+    {
+      name: 'createdAt',
+      title: 'Account Created',
+      type: 'datetime',
+    },
+    {
       name: 'isActive',
       title: 'Active',
       type: 'boolean',

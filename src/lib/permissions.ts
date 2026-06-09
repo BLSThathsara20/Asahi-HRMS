@@ -1,4 +1,4 @@
-import type { Permission, SystemUser, UserRole } from './types'
+import type { AuthUser, Permission, RoleConfig } from './types'
 
 export const ALL_PERMISSIONS: Permission[] = [
   'dashboard.view',
@@ -53,19 +53,19 @@ export const PERMISSION_GROUPS: {
     label: 'Employees',
     permissions: [
       { key: 'employees.view', label: 'View Employees', description: 'Browse employee list' },
-      { key: 'employees.register', label: 'Register Employees', description: 'Add new dealership employees' },
+      { key: 'employees.register', label: 'Register Employees', description: 'Add new team members with login access' },
       { key: 'employees.edit', label: 'Edit Employees', description: 'Update employee details' },
       { key: 'employees.delete', label: 'Delete Employees', description: 'Remove employees from active list' },
       { key: 'employees.manage_pay', label: 'Manage Employee Pay', description: 'Update pay rates and view pay change history' },
     ],
   },
   {
-    label: 'System Users',
+    label: 'Access Control',
     permissions: [
-      { key: 'users.view', label: 'View Users', description: 'Access system users page' },
-      { key: 'users.register', label: 'Register Users', description: 'Create manager, admin, super admin accounts' },
-      { key: 'users.edit', label: 'Edit Users', description: 'Update user name, email, phone and role' },
-      { key: 'users.delete', label: 'Delete Users', description: 'Deactivate system user accounts' },
+      { key: 'users.view', label: 'View Access', description: 'View user roles and permissions' },
+      { key: 'users.register', label: 'Register Users', description: 'Create employee accounts' },
+      { key: 'users.edit', label: 'Edit Users', description: 'Update user details and role' },
+      { key: 'users.delete', label: 'Delete Users', description: 'Deactivate accounts' },
       { key: 'users.manage_permissions', label: 'Manage User Access', description: 'Set per-user custom permissions' },
       { key: 'users.reset_activation', label: 'Reset Password', description: 'Force phone verification and new password setup' },
     ],
@@ -74,7 +74,7 @@ export const PERMISSION_GROUPS: {
     label: 'Roles & Permissions',
     permissions: [
       { key: 'roles.view', label: 'View Roles Module', description: 'Access roles and permissions page' },
-      { key: 'roles.manage', label: 'Manage Role Permissions', description: 'Edit default permissions per role' },
+      { key: 'roles.manage', label: 'Manage Roles', description: 'Create roles and edit default permissions' },
     ],
   },
   {
@@ -87,7 +87,7 @@ export const PERMISSION_GROUPS: {
   },
 ]
 
-export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
   super_admin: [...ALL_PERMISSIONS],
   admin: [
     'dashboard.view',
@@ -140,7 +140,6 @@ export const ROUTE_PERMISSIONS: Record<string, Permission> = {
   '/attendance': 'attendance.view',
   '/employees': 'employees.view',
   '/register': 'employees.register',
-  '/users': 'users.view',
   '/roles': 'roles.view',
   '/finance': 'finance.view',
 }
@@ -152,31 +151,40 @@ export const NAV_ITEMS_CONFIG = [
   { to: '/register', label: 'Register', permission: 'employees.register' as Permission },
   { to: '/finance', label: 'Finance', permission: 'finance.view' as Permission },
   { to: '/roles', label: 'Roles', permission: 'roles.view' as Permission },
-  { to: '/users', label: 'Users', permission: 'users.view' as Permission },
 ]
 
-export type RolePermissionMap = Record<UserRole, Permission[]>
+export type RolePermissionMap = Record<string, Permission[]>
+
+export function getUserRoleSlug(user: AuthUser): string {
+  return user.roleSlug ?? user.role?.slug ?? 'manager'
+}
+
+export function getUserRoleRank(user: AuthUser): number {
+  return user.role?.rank ?? 0
+}
+
+export function isSuperAdmin(user: AuthUser): boolean {
+  return getUserRoleSlug(user) === 'super_admin' || Boolean(user.role?.isSystem && user.role.slug === 'super_admin')
+}
 
 export function resolvePermissions(
-  user: SystemUser,
+  user: AuthUser,
   roleConfigs: RolePermissionMap = DEFAULT_ROLE_PERMISSIONS,
 ): Permission[] {
-  if (user.role === 'super_admin') {
-    return ALL_PERMISSIONS
-  }
+  if (isSuperAdmin(user)) return ALL_PERMISSIONS
 
   if (user.permissions && user.permissions.length > 0) {
     return user.permissions
   }
 
-  const defaults = DEFAULT_ROLE_PERMISSIONS[user.role]
-  const configured = roleConfigs[user.role] ?? defaults
-  // Merge with code defaults so new permissions work even if Sanity roleConfig is stale
+  const slug = getUserRoleSlug(user)
+  const defaults = DEFAULT_ROLE_PERMISSIONS[slug] ?? []
+  const configured = roleConfigs[slug] ?? defaults
   return [...new Set<Permission>([...configured, ...defaults])]
 }
 
 export function hasPermission(
-  user: SystemUser | null,
+  user: AuthUser | null,
   permission: Permission,
   roleConfigs: RolePermissionMap = DEFAULT_ROLE_PERMISSIONS,
 ): boolean {
@@ -185,7 +193,7 @@ export function hasPermission(
 }
 
 export function hasAnyPermission(
-  user: SystemUser | null,
+  user: AuthUser | null,
   permissions: Permission[],
   roleConfigs?: RolePermissionMap,
 ): boolean {
@@ -193,19 +201,19 @@ export function hasAnyPermission(
 }
 
 export function canEditRolePermissions(
-  actor: SystemUser,
-  targetRole: UserRole,
+  actor: AuthUser,
+  targetRole: RoleConfig,
   roleConfigs?: RolePermissionMap,
 ): boolean {
   if (!hasPermission(actor, 'roles.manage', roleConfigs)) return false
-  if (actor.role === 'super_admin') return true
-  if (actor.role === 'admin' && targetRole !== 'super_admin') return true
-  return false
+  if (isSuperAdmin(actor)) return true
+  if (getUserRoleSlug(actor) === 'admin' && targetRole.slug !== 'super_admin') return true
+  return getUserRoleRank(actor) > targetRole.rank
 }
 
 export function canEditUserPermissions(
-  actor: SystemUser,
-  target: SystemUser,
+  actor: AuthUser,
+  target: AuthUser,
   roleConfigs?: RolePermissionMap,
 ): boolean {
   if (!hasPermission(actor, 'users.manage_permissions', roleConfigs)) return false
@@ -213,25 +221,34 @@ export function canEditUserPermissions(
 }
 
 export function canManageUser(
-  actor: SystemUser,
-  target: SystemUser,
+  actor: AuthUser,
+  target: AuthUser,
   _roleConfigs?: RolePermissionMap,
 ): boolean {
   if (actor._id === target._id) return false
-  if (actor.role === 'super_admin') return true
-  if (actor.role === 'admin' && target.role !== 'super_admin') return true
-  if (actor.role === 'manager' && target.role === 'manager') return true
-  return false
+  if (isSuperAdmin(actor)) return true
+  if (getUserRoleSlug(actor) === 'admin' && !isSuperAdmin(target)) return true
+  return (
+    getUserRoleRank(actor) > getUserRoleRank(target) &&
+    getUserRoleSlug(actor) === getUserRoleSlug(target)
+  )
 }
 
-export function getEditableRoles(actorRole: UserRole): UserRole[] {
-  if (actorRole === 'super_admin') return ['super_admin', 'admin', 'manager']
-  if (actorRole === 'admin') return ['admin', 'manager']
-  return []
+export function getAssignableRoles(
+  actor: AuthUser,
+  allRoles: RoleConfig[],
+): RoleConfig[] {
+  if (isSuperAdmin(actor)) return allRoles
+  const actorRank = getUserRoleRank(actor)
+  return allRoles.filter((r) => r.rank < actorRank && r.slug !== 'super_admin')
+}
+
+export function getEditableRoles(actor: AuthUser, allRoles: RoleConfig[]): RoleConfig[] {
+  return allRoles.filter((r) => canEditRolePermissions(actor, r))
 }
 
 export function getFirstAllowedRoute(
-  user: SystemUser,
+  user: AuthUser,
   roleConfigs: RolePermissionMap = DEFAULT_ROLE_PERMISSIONS,
 ): string {
   for (const [route, permission] of Object.entries(ROUTE_PERMISSIONS)) {

@@ -9,7 +9,6 @@ import { Employees } from './pages/Employees'
 import { RegisterEmployee } from './pages/RegisterEmployee'
 import { Login } from './pages/Login'
 import { SetupSuperAdmin } from './pages/SetupSuperAdmin'
-import { SystemUsers } from './pages/SystemUsers'
 import { RolesPermissions } from './pages/RolesPermissions'
 import { Finance } from './pages/Finance'
 
@@ -45,9 +44,6 @@ export default function App() {
                 </Route>
                 <Route element={<PermissionRoute permission="roles.view" />}>
                   <Route path="roles" element={<RolesPermissions />} />
-                </Route>
-                <Route element={<PermissionRoute permission="users.view" />}>
-                  <Route path="users" element={<SystemUsers />} />
                 </Route>
               </Route>
             </Route>

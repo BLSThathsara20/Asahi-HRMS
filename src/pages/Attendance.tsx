@@ -239,7 +239,7 @@ export function Attendance() {
         </GlassCard>
       </div>
 
-      {(user?.role === 'super_admin' || user?.role === 'admin') && (
+      {(user?.roleSlug === 'super_admin' || user?.roleSlug === 'admin') && (
         <GoogleSheetsStatus />
       )}
 

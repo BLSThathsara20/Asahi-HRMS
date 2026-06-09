@@ -6,17 +6,18 @@ import { Badge } from '../ui/Badge'
 import { PermissionChecklist } from '../permissions/PermissionChecklist'
 import { useAuth } from '../../context/AuthContext'
 import { getRoleColor, getRoleLabel } from '../../lib/auth'
-import type { Permission, SystemUser } from '../../lib/types'
+import type { AuthUser, Permission } from '../../lib/types'
 
 interface AccessLevelEditorProps {
-  targetUser: SystemUser
+  targetUser: AuthUser
   onClose: () => void
-  onSaved: (user: SystemUser) => void
+  onSaved: (user: AuthUser) => void
 }
 
 export function AccessLevelEditor({ targetUser, onClose, onSaved }: AccessLevelEditorProps) {
   const { updatePermissions, roleConfigs } = useAuth()
-  const roleDefaults = roleConfigs[targetUser.role]
+  const roleSlug = targetUser.roleSlug ?? targetUser.role?.slug ?? 'manager'
+  const roleDefaults = roleConfigs[roleSlug] ?? []
 
   const [selected, setSelected] = useState<Permission[]>(
     targetUser.permissions?.length

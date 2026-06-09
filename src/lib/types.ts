@@ -1,4 +1,5 @@
-export type UserRole = 'super_admin' | 'admin' | 'manager'
+/** @deprecated Use role slug string from RoleConfig */
+export type UserRole = string
 
 export type EmploymentType = 'part_time' | 'full_time'
 export type PaymentMethod = 'hourly' | 'daily' | 'monthly'
@@ -32,28 +33,39 @@ export type Permission =
 
 export interface RoleConfig {
   _id: string
-  role: UserRole
+  slug: string
+  name: string
+  color: string
   permissions: Permission[]
+  isSystem: boolean
+  rank: number
   updatedAt: string
+  /** @deprecated legacy Sanity field */
+  role?: string
 }
 
-export interface SystemUser {
+/** Logged-in employee (single user model) */
+export interface AuthUser {
   _id: string
+  employeeId?: string
   email: string
   firstName: string
   lastName: string
   phone?: string
   mustSetPassword?: boolean
-  role: UserRole
+  role: RoleConfig | null
+  roleSlug: string
   permissions?: Permission[]
   isActive: boolean
-  createdAt: string
+  createdAt?: string
 }
+
+/** @deprecated Use AuthUser */
+export type SystemUser = AuthUser
 
 export type LoginCheckStatus =
   | { status: 'not_found' }
   | { status: 'not_configured' }
-  | { status: 'employee_only'; firstName: string }
   | { status: 'pending_setup'; firstName: string }
   | { status: 'active'; firstName: string }
 
@@ -84,6 +96,10 @@ export interface Employee {
   payRate?: number
   hoursPerWeek?: number
   payHistory?: PayHistoryEntry[]
+  role?: RoleConfig | null
+  mustSetPassword?: boolean
+  permissions?: Permission[]
+  createdAt?: string
   isActive: boolean
   avatarUrl?: string
 }

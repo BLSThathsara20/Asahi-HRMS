@@ -12,6 +12,7 @@ import { useEmployees } from '../hooks/useEmployees'
 import { useDepartments } from '../hooks/useDepartments'
 import { usePermissions } from '../hooks/usePermissions'
 import { getDepartmentColor, getDepartmentLabel } from '../lib/types'
+import { getRoleColor, getRoleLabel } from '../lib/auth'
 import { formatGBP, formatUKDate } from '../lib/uk'
 import {
   EMPLOYMENT_TYPE_LABELS,
@@ -122,12 +123,19 @@ export function Employees() {
                         {employee.firstName} {employee.lastName}
                       </p>
                       <p className="text-sm text-[var(--text-muted)]">{employee.jobTitle}</p>
-                      <Badge
-                        color={getDepartmentColor(employee.department)}
-                        className="mt-2"
-                      >
-                        {getDepartmentLabel(employee.department)}
-                      </Badge>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <Badge color={getDepartmentColor(employee.department)}>
+                          {getDepartmentLabel(employee.department)}
+                        </Badge>
+                        {employee.role && (
+                          <Badge color={getRoleColor(employee.role)}>
+                            {getRoleLabel(employee.role)}
+                          </Badge>
+                        )}
+                        {employee.mustSetPassword && (
+                          <Badge color="#d97706">Pending login</Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="mt-4 space-y-1 border-t border-white/10 pt-3 text-xs text-[var(--text-muted)]">

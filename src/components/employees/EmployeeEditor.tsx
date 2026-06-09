@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, UserPen } from 'lucide-react'
+import { X, UserPen, RotateCcw } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { useAuth } from '../../context/AuthContext'
 import { useDepartments } from '../../hooks/useDepartments'
+import { getRoleLabel } from '../../lib/auth'
 import { getPayRateLabel } from '../../lib/payroll'
 import type { Employee, EmploymentType, PaymentMethod } from '../../lib/types'
 import { updateEmployee } from '../../lib/sanity'
@@ -17,8 +19,10 @@ interface EmployeeEditorProps {
 }
 
 export function EmployeeEditor({ employee, onClose, onSaved }: EmployeeEditorProps) {
+  const { assignableRoles, resetUserActivation, can, canManageUserTarget } = useAuth()
   const { departments } = useDepartments()
   const [loading, setLoading] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     firstName: employee.firstName,
@@ -33,6 +37,7 @@ export function EmployeeEditor({ employee, onClose, onSaved }: EmployeeEditorPro
     paymentMethod: (employee.paymentMethod ?? 'monthly') as PaymentMethod,
     payRate: String(employee.payRate ?? ''),
     hoursPerWeek: String(employee.hoursPerWeek ?? ''),
+    roleId: employee.role?._id ?? '',
   })
 
   const update = (field: string, value: string) =>
@@ -43,6 +48,14 @@ export function EmployeeEditor({ employee, onClose, onSaved }: EmployeeEditorPro
     const payRate = parseFloat(form.payRate)
     if (isNaN(payRate) || payRate < 0) {
       setError('Please enter a valid pay rate')
+      return
+    }
+    if (!form.phone.trim()) {
+      setError('Phone is required for login verification')
+      return
+    }
+    if (!form.roleId) {
+      setError('Please select an access role')
       return
     }
 
@@ -56,7 +69,8 @@ export function EmployeeEditor({ employee, onClose, onSaved }: EmployeeEditorPro
         departmentId: form.departmentId,
         jobTitle: form.jobTitle,
         description: form.description || undefined,
-        phone: form.phone || undefined,
+        phone: form.phone,
+        roleId: form.roleId,
         startDate: form.startDate,
         employmentType: form.employmentType,
         paymentMethod: form.paymentMethod,
@@ -179,14 +193,38 @@ export function EmployeeEditor({ employee, onClose, onSaved }: EmployeeEditorPro
 
             <div>
               <label className="mb-1.5 block text-xs font-medium text-[var(--text-muted)]">
-                Phone
+                Phone (UK mobile)
               </label>
               <input
+                required
                 type="tel"
                 className={inputClass}
                 value={form.phone}
                 onChange={(e) => update('phone', e.target.value)}
               />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-[var(--text-muted)]">
+                Access Role
+              </label>
+              <select
+                required
+                className={inputClass}
+                value={form.roleId}
+                onChange={(e) => update('roleId', e.target.value)}
+              >
+                <option value="">Select role</option>
+                {assignableRoles.map((r) => (
+                  <option key={r._id} value={r._id}>
+                    {r.name}
+                  </option>
+                ))}
+                {employee.role &&
+                  !assignableRoles.find((r) => r._id === employee.role?._id) && (
+                    <option value={employee.role._id}>{getRoleLabel(employee.role)}</option>
+                  )}
+              </select>
             </div>
 
             <div>
@@ -258,11 +296,56 @@ export function EmployeeEditor({ employee, onClose, onSaved }: EmployeeEditorPro
               />
             </div>
 
+            {employee.mustSetPassword && (
+              <div className="rounded-xl bg-amber-500/15 px-4 py-3 text-xs text-amber-600 dark:text-amber-400">
+                Pending first login — password not set yet
+              </div>
+            )}
+
             {error && (
               <div className="rounded-xl bg-red-500/15 px-4 py-3 text-sm text-red-600 dark:text-red-400">
                 {error}
               </div>
             )}
+
+            {can('users.reset_activation') &&
+              employee.role &&
+              canManageUserTarget({
+                _id: employee._id,
+                email: employee.email,
+                firstName: employee.firstName,
+                lastName: employee.lastName,
+                role: employee.role,
+                roleSlug: employee.role.slug,
+                isActive: employee.isActive,
+              }) && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      !confirm(
+                        `Reset password for ${employee.firstName}? They must verify phone and set a new password.`,
+                      )
+                    )
+                      return
+                    setResetting(true)
+                    try {
+                      await resetUserActivation(employee._id)
+                      onSaved()
+                      onClose()
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : 'Reset failed')
+                    } finally {
+                      setResetting(false)
+                    }
+                  }}
+                  disabled={resetting}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-600 hover:bg-amber-500/15 cursor-pointer disabled:opacity-50"
+                >
+                  <RotateCcw size={16} />
+                  {resetting ? 'Resetting...' : 'Reset password'}
+                </button>
+              )}
 
             <div className="flex gap-3">
               <Button type="button" variant="secondary" onClick={onClose} className="flex-1">

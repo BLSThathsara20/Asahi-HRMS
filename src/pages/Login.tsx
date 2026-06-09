@@ -46,15 +46,8 @@ export function Login() {
         return
       }
 
-      if (status.status === 'employee_only') {
-        setError(
-          `${status.firstName} is registered as an employee but has no login account. Ask an admin to add you under System Users.`,
-        )
-        return
-      }
-
       if (status.status === 'not_found') {
-        setError('No login account found with this email. Contact your administrator.')
+        setError('No account found with this email. Contact your administrator.')
         return
       }
 

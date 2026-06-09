@@ -50,7 +50,7 @@ export function AttendanceLocationDisplay({
 }: AttendanceLocationDisplayProps) {
   const { user } = useAuth()
 
-  if (user?.role !== 'super_admin') return null
+  if (user?.roleSlug !== 'super_admin') return null
   if (!record.signInLocation && !record.signOutLocation) return null
 
   if (compact) {

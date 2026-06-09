@@ -6,86 +6,88 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import {
-  clearSession,
-  loadSession,
-  saveSession,
-  getAssignableRoles,
-} from '../lib/auth'
+import { clearSession, loadSession, saveSession } from '../lib/auth'
 import {
   canEditRolePermissions,
   canEditUserPermissions,
   canManageUser,
   DEFAULT_ROLE_PERMISSIONS,
+  getAssignableRoles,
   hasPermission,
   resolvePermissions,
   type RolePermissionMap,
 } from '../lib/permissions'
 import {
-  countSystemUsers,
-  fetchSystemUsers,
+  countLoginAccounts,
+  fetchAuthUsers,
   loginUser,
   completeAccountSetup,
   registerSuperAdmin,
-  registerSystemUser,
   resetUserActivation,
-  updateSystemUser,
-  deleteSystemUser,
+  updateAuthUser,
+  deleteAuthUser,
   updateUserPermissions,
-  type RegisterSystemUserInput,
-  type UpdateSystemUserInput,
+  type RegisterAuthUserInput,
+  type UpdateAuthUserInput,
 } from '../lib/sanity/auth'
 import {
+  createRole,
   fetchRoleConfigs,
   roleConfigsToMap,
   updateRoleConfig,
+  deleteRole,
+  type CreateRoleInput,
 } from '../lib/sanity/roles'
 import { isSanityConfigured } from '../lib/sanity/client'
-import type { Permission, SystemUser, UserRole } from '../lib/types'
+import type { AuthUser, Permission, RoleConfig } from '../lib/types'
 
 interface AuthContextValue {
-  user: SystemUser | null
+  user: AuthUser | null
   loading: boolean
   hasUsers: boolean | null
   isAuthenticated: boolean
   permissions: Permission[]
   roleConfigs: RolePermissionMap
+  roles: RoleConfig[]
   login: (email: string, password: string) => Promise<void>
   completeSetup: (email: string, phone: string, password: string) => Promise<void>
-  resetUserActivation: (userId: string) => Promise<SystemUser>
-  updateSystemUser: (userId: string, input: UpdateSystemUserInput) => Promise<SystemUser>
-  deleteSystemUser: (userId: string) => Promise<void>
+  resetUserActivation: (userId: string) => Promise<AuthUser>
+  updateAuthUser: (userId: string, input: UpdateAuthUserInput) => Promise<AuthUser>
+  deleteAuthUser: (userId: string) => Promise<void>
   logout: () => void
-  setupSuperAdmin: (input: Omit<RegisterSystemUserInput, 'role'>) => Promise<void>
-  createSystemUser: (input: RegisterSystemUserInput) => Promise<void>
+  setupSuperAdmin: (input: Omit<RegisterAuthUserInput, 'roleId'>) => Promise<void>
   updatePermissions: (userId: string, permissions: Permission[]) => Promise<void>
-  updateRolePermissions: (role: UserRole, permissions: Permission[]) => Promise<void>
+  updateRolePermissions: (roleId: string, permissions: Permission[]) => Promise<void>
+  createRole: (input: CreateRoleInput) => Promise<RoleConfig>
+  removeRole: (roleId: string) => Promise<void>
   reloadRoleConfigs: () => Promise<void>
   can: (permission: Permission) => boolean
-  canManageUsers: boolean
   canManagePermissions: boolean
   canManageRoles: boolean
-  canEditPermissionsFor: (target: SystemUser) => boolean
-  canManageUserTarget: (target: SystemUser) => boolean
-  canEditRole: (role: UserRole) => boolean
-  assignableRoles: ReturnType<typeof getAssignableRoles>
-  refreshUser: (updated: SystemUser) => void
+  canEditPermissionsFor: (target: AuthUser) => boolean
+  canManageUserTarget: (target: AuthUser) => boolean
+  canEditRole: (role: RoleConfig) => boolean
+  assignableRoles: RoleConfig[]
+  refreshUser: (updated: AuthUser) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SystemUser | null>(() => loadSession())
+  const [user, setUser] = useState<AuthUser | null>(() => loadSession())
   const [loading, setLoading] = useState(true)
   const [hasUsers, setHasUsers] = useState<boolean | null>(null)
   const [roleConfigs, setRoleConfigs] = useState<RolePermissionMap>(DEFAULT_ROLE_PERMISSIONS)
+  const [roles, setRoles] = useState<RoleConfig[]>([])
 
   const reloadRoleConfigs = useCallback(async () => {
     try {
       const configs = await fetchRoleConfigs()
+      setRoles(configs)
       setRoleConfigs(roleConfigsToMap(configs))
     } catch {
       setRoleConfigs(DEFAULT_ROLE_PERMISSIONS)
+      setRoles([])
     }
   }, [])
 
@@ -95,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     try {
-      const count = await countSystemUsers()
+      const count = await countLoginAccounts()
       setHasUsers(count > 0)
     } catch {
       setHasUsers(null)
@@ -106,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     Promise.all([checkUsers(), reloadRoleConfigs()]).finally(() => setLoading(false))
   }, [checkUsers, reloadRoleConfigs])
 
-  const refreshUser = (updated: SystemUser) => {
+  const refreshUser = (updated: AuthUser) => {
     saveSession(updated)
     setUser(updated)
   }
@@ -131,48 +133,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user || !hasPermission(user, 'users.reset_activation', roleConfigs)) {
       throw new Error('You do not have permission to reset password')
     }
-
-    const target = (await fetchSystemUsers()).find((u) => u._id === userId)
+    const target = (await fetchAuthUsers()).find((u) => u._id === userId)
     if (!target || !canManageUser(user, target, roleConfigs)) {
-      throw new Error('You cannot reset this user\'s password')
+      throw new Error("You cannot reset this user's password")
     }
-
     return resetUserActivation(userId)
   }
 
-  const updateSystemUserAccount = async (userId: string, input: UpdateSystemUserInput) => {
+  const updateUserAccount = async (userId: string, input: UpdateAuthUserInput) => {
     if (!user || !hasPermission(user, 'users.edit', roleConfigs)) {
       throw new Error('You do not have permission to edit users')
     }
-
-    const target = (await fetchSystemUsers()).find((u) => u._id === userId)
+    const target = (await fetchAuthUsers()).find((u) => u._id === userId)
     if (!target || !canManageUser(user, target, roleConfigs)) {
       throw new Error('You cannot edit this user')
     }
-
-    const allowed = getAssignableRoles(user.role)
-    if (!allowed.includes(input.role)) {
+    const allowed = getAssignableRoles(user, roles)
+    if (!allowed.find((r) => r._id === input.roleId)) {
       throw new Error('You cannot assign this role')
     }
-
-    const updated = await updateSystemUser(userId, input)
-    if (user._id === userId) {
-      refreshUser(updated)
-    }
+    const updated = await updateAuthUser(userId, input)
+    if (user._id === userId) refreshUser(updated)
     return updated
   }
 
-  const removeSystemUser = async (userId: string) => {
+  const removeUser = async (userId: string) => {
     if (!user || !hasPermission(user, 'users.delete', roleConfigs)) {
       throw new Error('You do not have permission to delete users')
     }
-
-    const target = (await fetchSystemUsers()).find((u) => u._id === userId)
+    const target = (await fetchAuthUsers()).find((u) => u._id === userId)
     if (!target || !canManageUser(user, target, roleConfigs)) {
       throw new Error('You cannot delete this user')
     }
-
-    await deleteSystemUser(userId)
+    await deleteAuthUser(userId)
   }
 
   const logout = () => {
@@ -180,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
-  const setupSuperAdmin = async (input: Omit<RegisterSystemUserInput, 'role'>) => {
+  const setupSuperAdmin = async (input: Omit<RegisterAuthUserInput, 'roleId'>) => {
     const created = await registerSuperAdmin(input)
     await reloadRoleConfigs()
     saveSession(created)
@@ -188,41 +181,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHasUsers(true)
   }
 
-  const createSystemUser = async (input: RegisterSystemUserInput) => {
-    if (!user || !hasPermission(user, 'users.register', roleConfigs)) {
-      throw new Error('You do not have permission to register users')
-    }
-
-    const allowed = getAssignableRoles(user.role)
-    if (!allowed.includes(input.role)) {
-      throw new Error('You cannot assign this role')
-    }
-
-    await registerSystemUser(input)
-  }
-
-  const updatePermissions = async (userId: string, permissions: Permission[]) => {
+  const updatePermissions = async (userId: string, perms: Permission[]) => {
     if (!user || !hasPermission(user, 'users.manage_permissions', roleConfigs)) {
       throw new Error('You do not have permission to manage access levels')
     }
+    const updated = await updateUserPermissions(userId, perms)
+    if (user._id === userId) refreshUser(updated)
+  }
 
-    const updated = await updateUserPermissions(userId, permissions)
-    if (user._id === userId) {
-      refreshUser(updated)
+  const updateRolePerms = async (roleId: string, perms: Permission[]) => {
+    const role = roles.find((r) => r._id === roleId)
+    if (!user || !role || !canEditRolePermissions(user, role, roleConfigs)) {
+      throw new Error('You do not have permission to manage this role')
+    }
+    await updateRoleConfig(roleId, perms)
+    await reloadRoleConfigs()
+    if (user.role?._id === roleId && (!user.permissions || user.permissions.length === 0)) {
+      refreshUser(user)
     }
   }
 
-  const updateRolePermissions = async (role: UserRole, permissions: Permission[]) => {
-    if (!user || !canEditRolePermissions(user, role, roleConfigs)) {
-      throw new Error('You do not have permission to manage this role')
+  const addRole = async (input: CreateRoleInput) => {
+    if (!user || !hasPermission(user, 'roles.manage', roleConfigs)) {
+      throw new Error('You do not have permission to create roles')
     }
-
-    await updateRoleConfig(role, permissions)
+    const created = await createRole(input)
     await reloadRoleConfigs()
+    return created
+  }
 
-    if (user.role === role && (!user.permissions || user.permissions.length === 0)) {
-      refreshUser(user)
+  const removeRoleById = async (roleId: string) => {
+    if (!user || !hasPermission(user, 'roles.manage', roleConfigs)) {
+      throw new Error('You do not have permission to delete roles')
     }
+    await deleteRole(roleId)
+    await reloadRoleConfigs()
   }
 
   const permissions = user ? resolvePermissions(user, roleConfigs) : []
@@ -236,19 +229,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         permissions,
         roleConfigs,
+        roles,
         login,
         completeSetup,
         resetUserActivation: resetActivation,
-        updateSystemUser: updateSystemUserAccount,
-        deleteSystemUser: removeSystemUser,
+        updateAuthUser: updateUserAccount,
+        deleteAuthUser: removeUser,
         logout,
         setupSuperAdmin,
-        createSystemUser,
         updatePermissions,
-        updateRolePermissions,
+        updateRolePermissions: updateRolePerms,
+        createRole: addRole,
+        removeRole: removeRoleById,
         reloadRoleConfigs,
         can: (permission) => hasPermission(user, permission, roleConfigs),
-        canManageUsers: hasPermission(user, 'users.register', roleConfigs),
         canManagePermissions: hasPermission(user, 'users.manage_permissions', roleConfigs),
         canManageRoles: hasPermission(user, 'roles.manage', roleConfigs),
         canEditPermissionsFor: (target) =>
@@ -257,7 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user ? canManageUser(user, target, roleConfigs) : false,
         canEditRole: (role) =>
           user ? canEditRolePermissions(user, role, roleConfigs) : false,
-        assignableRoles: user ? getAssignableRoles(user.role) : [],
+        assignableRoles: user ? getAssignableRoles(user, roles) : [],
         refreshUser,
       }}
     >

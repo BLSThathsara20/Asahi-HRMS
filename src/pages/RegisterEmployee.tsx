@@ -5,6 +5,7 @@ import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { createEmployee, generateNextEmployeeId } from '../lib/sanity'
+import { useAuth } from '../context/AuthContext'
 import { useDepartments } from '../hooks/useDepartments'
 import { getPayRateLabel } from '../lib/payroll'
 import type { EmploymentType, PaymentMethod } from '../lib/types'
@@ -13,6 +14,7 @@ const inputClass =
   'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-asahi-blue/50 transition-colors'
 
 export function RegisterEmployee() {
+  const { assignableRoles } = useAuth()
   const { departments, loading: deptLoading } = useDepartments()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -33,6 +35,7 @@ export function RegisterEmployee() {
     payRate: '',
     hoursPerWeek: '',
     payEffectiveFrom: new Date().toISOString().split('T')[0],
+    roleId: '',
   })
 
   const hasPaymentMethod = Boolean(form.paymentMethod)
@@ -50,6 +53,13 @@ export function RegisterEmployee() {
     loadNextId()
   }, [])
 
+  useEffect(() => {
+    if (assignableRoles.length && !form.roleId) {
+      const manager = assignableRoles.find((r) => r.slug === 'manager')
+      setForm((f) => ({ ...f, roleId: manager?._id ?? assignableRoles[0]._id }))
+    }
+  }, [assignableRoles, form.roleId])
+
   const update = (field: string, value: string) =>
     setForm((f) => ({ ...f, [field]: value }))
 
@@ -62,6 +72,16 @@ export function RegisterEmployee() {
 
     if (!form.paymentMethod) {
       setError('Please select a payment method')
+      return
+    }
+
+    if (!form.phone.trim()) {
+      setError('Phone is required — used for first-login verification')
+      return
+    }
+
+    if (!form.roleId) {
+      setError('Please select an access role')
       return
     }
 
@@ -91,8 +111,9 @@ export function RegisterEmployee() {
         email: form.email,
         departmentId: form.departmentId,
         jobTitle: form.jobTitle,
+        roleId: form.roleId,
         description: form.description || undefined,
-        phone: form.phone || undefined,
+        phone: form.phone,
         startDate: form.startDate,
         employmentType: form.employmentType,
         paymentMethod: form.paymentMethod as PaymentMethod,
@@ -119,6 +140,7 @@ export function RegisterEmployee() {
         payRate: '',
         hoursPerWeek: '',
         payEffectiveFrom: new Date().toISOString().split('T')[0],
+        roleId: assignableRoles.find((r) => r.slug === 'manager')?._id ?? assignableRoles[0]?._id ?? '',
       })
       await loadNextId()
     } catch (err) {
@@ -132,7 +154,7 @@ export function RegisterEmployee() {
     <div>
       <Header
         title="Register Employee"
-        subtitle="Add a new team member to Asahi Group"
+        subtitle="Add a team member with login access"
       />
 
       <GlassCard strong className="mx-auto max-w-xl p-6">
@@ -143,8 +165,8 @@ export function RegisterEmployee() {
             className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400"
           >
             <CheckCircle2 size={16} />
-            Employee registered successfully
-            {registeredId && ` — ID: ${registeredId}`}
+            Employee registered — they set their password on first login
+            {registeredId && ` (ID: ${registeredId})`}
           </motion.div>
         )}
 
@@ -221,15 +243,38 @@ export function RegisterEmployee() {
 
           <div>
             <label className="mb-1.5 block text-xs font-medium text-[var(--text-muted)]">
-              Phone (optional)
+              Phone (UK mobile)
             </label>
             <input
+              required
               type="tel"
               className={inputClass}
               placeholder="07700 900000"
               value={form.phone}
               onChange={(e) => update('phone', e.target.value)}
             />
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              Used to verify identity on first login
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-[var(--text-muted)]">
+              Access Role
+            </label>
+            <select
+              required
+              className={inputClass}
+              value={form.roleId}
+              onChange={(e) => update('roleId', e.target.value)}
+            >
+              <option value="">Select role</option>
+              {assignableRoles.map((r) => (
+                <option key={r._id} value={r._id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

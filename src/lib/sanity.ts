@@ -1,3 +1,5 @@
+import bcrypt from 'bcryptjs'
+import { normalizePhone } from './phone'
 import type {
   AttendanceLocation,
   AttendanceRecord,
@@ -27,6 +29,8 @@ const ATTENDANCE_LOCATION_FIELDS = `
   signOutLocation { latitude, longitude, accuracy, capturedAt }
 `
 
+const ROLE_FIELDS = `_id, slug, name, color, permissions, isSystem, rank, updatedAt, role`
+
 const EMPLOYEE_FIELDS = `
   _id,
   employeeId,
@@ -42,9 +46,13 @@ const EMPLOYEE_FIELDS = `
   payRate,
   hoursPerWeek,
   payHistory,
+  mustSetPassword,
+  permissions,
+  createdAt,
   isActive,
   avatarUrl,
-  "department": department->{ ${DEPT_FIELDS} }
+  "department": department->{ ${DEPT_FIELDS} },
+  "role": role->{ ${ROLE_FIELDS} }
 `
 
 const ATTENDANCE_RECORD_FIELDS = `
@@ -92,14 +100,19 @@ export interface CreateEmployeeInput {
   email: string
   departmentId: string
   jobTitle: string
+  roleId: string
   description?: string
-  phone?: string
+  phone: string
   startDate: string
   employmentType: EmploymentType
   paymentMethod: PaymentMethod
   payRate: number
   hoursPerWeek?: number
   payEffectiveFrom?: string
+}
+
+async function createPendingPasswordHash(): Promise<string> {
+  return bcrypt.hash(`PENDING_${crypto.randomUUID()}_${Date.now()}`, 10)
 }
 
 export async function createEmployee(input: CreateEmployeeInput): Promise<Employee> {
@@ -140,22 +153,30 @@ export async function createEmployee(input: CreateEmployeeInput): Promise<Employ
     return newEmployee
   }
 
+  const passwordHash = await createPendingPasswordHash()
+  const phone = normalizePhone(input.phone)
+
   const doc = await getClient().create({
     _type: 'employee',
     employeeId,
     firstName: input.firstName,
     lastName: input.lastName,
-    email: input.email,
+    email: input.email.toLowerCase().trim(),
     department: { _type: 'reference', _ref: input.departmentId },
     jobTitle: input.jobTitle,
     description: input.description,
-    phone: input.phone,
+    phone,
     startDate: input.startDate,
     employmentType: input.employmentType,
     paymentMethod: input.paymentMethod,
     payRate: input.payRate,
     hoursPerWeek: input.hoursPerWeek,
     payHistory: [initialHistory],
+    role: { _type: 'reference', _ref: input.roleId },
+    passwordHash,
+    mustSetPassword: true,
+    permissions: [],
+    createdAt: now,
     isActive: true,
   })
 
@@ -168,8 +189,9 @@ export interface UpdateEmployeeInput {
   email: string
   departmentId: string
   jobTitle: string
+  roleId: string
   description?: string
-  phone?: string
+  phone: string
   startDate: string
   employmentType: EmploymentType
   paymentMethod: PaymentMethod
@@ -208,16 +230,17 @@ export async function updateEmployee(
     .set({
       firstName: input.firstName,
       lastName: input.lastName,
-      email: input.email,
+      email: input.email.toLowerCase().trim(),
       department: { _type: 'reference', _ref: input.departmentId },
       jobTitle: input.jobTitle,
       description: input.description,
-      phone: input.phone,
+      phone: normalizePhone(input.phone),
       startDate: input.startDate,
       employmentType: input.employmentType,
       paymentMethod: input.paymentMethod,
       payRate: input.payRate,
       hoursPerWeek: input.hoursPerWeek,
+      role: { _type: 'reference', _ref: input.roleId },
     })
     .commit()
 

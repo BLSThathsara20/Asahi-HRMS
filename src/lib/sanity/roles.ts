@@ -1,131 +1,225 @@
 import { getSanityClient, isSanityConfigured } from './client'
-import { DEFAULT_ROLE_PERMISSIONS } from '../permissions'
-import type { Permission, RoleConfig, UserRole } from '../types'
+import { ALL_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS } from '../permissions'
+import type { Permission, RoleConfig } from '../types'
 
-let mockRoleConfigs: RoleConfig[] = Object.entries(DEFAULT_ROLE_PERMISSIONS).map(
-  ([role, permissions]) => ({
-    _id: `role-${role}`,
-    role: role as UserRole,
-    permissions,
-    updatedAt: new Date().toISOString(),
-  }),
-)
+export const SYSTEM_ROLE_SEEDS: Omit<RoleConfig, '_id' | 'updatedAt'>[] = [
+  {
+    slug: 'super_admin',
+    name: 'Super Admin',
+    color: '#7c3aed',
+    rank: 100,
+    isSystem: true,
+    permissions: [...ALL_PERMISSIONS],
+  },
+  {
+    slug: 'admin',
+    name: 'Admin',
+    color: '#1a6fd4',
+    rank: 50,
+    isSystem: true,
+    permissions: DEFAULT_ROLE_PERMISSIONS.admin as Permission[],
+  },
+  {
+    slug: 'manager',
+    name: 'Manager',
+    color: '#059669',
+    rank: 10,
+    isSystem: true,
+    permissions: DEFAULT_ROLE_PERMISSIONS.manager as Permission[],
+  },
+]
+
+const ROLE_FIELDS = `_id, slug, name, color, permissions, isSystem, rank, updatedAt, role`
+
+let mockRoleConfigs: RoleConfig[] = SYSTEM_ROLE_SEEDS.map((seed) => ({
+  ...seed,
+  _id: `role-${seed.slug}`,
+  updatedAt: new Date().toISOString(),
+}))
+
+export function normalizeRoleConfig(raw: Record<string, unknown>): RoleConfig {
+  const slug = String(raw.slug ?? raw.role ?? 'unknown')
+  const seed = SYSTEM_ROLE_SEEDS.find((s) => s.slug === slug)
+  return {
+    _id: String(raw._id),
+    slug,
+    name: String(raw.name ?? seed?.name ?? slug.replace(/_/g, ' ')),
+    color: String(raw.color ?? seed?.color ?? '#64748b'),
+    permissions: (raw.permissions as Permission[]) ?? seed?.permissions ?? [],
+    isSystem: Boolean(raw.isSystem ?? seed?.isSystem ?? false),
+    rank: Number(raw.rank ?? seed?.rank ?? 0),
+    updatedAt: String(raw.updatedAt ?? new Date().toISOString()),
+    role: raw.role ? String(raw.role) : undefined,
+  }
+}
 
 export async function fetchRoleConfigs(): Promise<RoleConfig[]> {
   if (!isSanityConfigured) return mockRoleConfigs
 
-  const configs = await getSanityClient().fetch<RoleConfig[]>(
-    `*[_type == "roleConfig"] | order(role asc) { _id, role, permissions, updatedAt }`,
+  const configs = await getSanityClient().fetch<Record<string, unknown>[]>(
+    `*[_type == "roleConfig"] | order(rank desc, name asc) { ${ROLE_FIELDS} }`,
   )
 
   if (configs.length === 0) {
     return seedDefaultRoleConfigs()
   }
 
-  return fillMissingRoles(configs)
+  const normalized = configs.map(normalizeRoleConfig)
+  return fillMissingSystemRoles(normalized)
 }
 
-function fillMissingRoles(configs: RoleConfig[]): RoleConfig[] {
-  const roles: UserRole[] = ['super_admin', 'admin', 'manager']
+function fillMissingSystemRoles(configs: RoleConfig[]): RoleConfig[] {
   const result = [...configs]
-
-  for (const role of roles) {
-    if (!result.find((c) => c.role === role)) {
+  for (const seed of SYSTEM_ROLE_SEEDS) {
+    if (!result.find((c) => c.slug === seed.slug)) {
       result.push({
-        _id: `default-${role}`,
-        role,
-        permissions: DEFAULT_ROLE_PERMISSIONS[role],
+        ...seed,
+        _id: `default-${seed.slug}`,
         updatedAt: new Date().toISOString(),
       })
     }
   }
-
-  return result.sort((a, b) => a.role.localeCompare(b.role))
+  return result.sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name))
 }
 
 async function seedDefaultRoleConfigs(): Promise<RoleConfig[]> {
-  const roles: UserRole[] = ['super_admin', 'admin', 'manager']
+  const now = new Date().toISOString()
   const created: RoleConfig[] = []
 
-  for (const role of roles) {
+  for (const seed of SYSTEM_ROLE_SEEDS) {
     const doc = await getSanityClient().create({
       _type: 'roleConfig',
-      role,
-      permissions: DEFAULT_ROLE_PERMISSIONS[role],
-      updatedAt: new Date().toISOString(),
+      slug: seed.slug,
+      name: seed.name,
+      color: seed.color,
+      rank: seed.rank,
+      isSystem: seed.isSystem,
+      permissions: seed.permissions,
+      role: seed.slug,
+      updatedAt: now,
     })
-    created.push({
-      _id: doc._id,
-      role,
-      permissions: DEFAULT_ROLE_PERMISSIONS[role],
-      updatedAt: new Date().toISOString(),
-    })
+    created.push({ ...seed, _id: doc._id, updatedAt: now })
   }
 
   return created
 }
 
+export async function fetchRoleBySlug(slug: string): Promise<RoleConfig | null> {
+  const configs = await fetchRoleConfigs()
+  return configs.find((c) => c.slug === slug) ?? null
+}
+
+export interface CreateRoleInput {
+  name: string
+  slug?: string
+  color?: string
+  rank?: number
+  permissions?: Permission[]
+}
+
+export function slugifyRoleName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+}
+
+export async function createRole(input: CreateRoleInput): Promise<RoleConfig> {
+  const slug = input.slug ?? slugifyRoleName(input.name)
+  if (!slug) throw new Error('Role name must contain letters or numbers')
+
+  if (!isSanityConfigured) {
+    const created: RoleConfig = {
+      _id: `role-${slug}`,
+      slug,
+      name: input.name.trim(),
+      color: input.color ?? '#64748b',
+      rank: input.rank ?? 5,
+      isSystem: false,
+      permissions: input.permissions ?? [],
+      updatedAt: new Date().toISOString(),
+    }
+    mockRoleConfigs.push(created)
+    return created
+  }
+
+  const existing = await getSanityClient().fetch(
+    `*[_type == "roleConfig" && slug == $slug][0]`,
+    { slug },
+  )
+  if (existing) throw new Error('A role with this name already exists')
+
+  const now = new Date().toISOString()
+  const doc = await getSanityClient().create({
+    _type: 'roleConfig',
+    slug,
+    name: input.name.trim(),
+    color: input.color ?? '#64748b',
+    rank: input.rank ?? 5,
+    isSystem: false,
+    permissions: input.permissions ?? [],
+    updatedAt: now,
+  })
+
+  return normalizeRoleConfig({ ...doc, slug, name: input.name.trim() })
+}
+
 export async function updateRoleConfig(
-  role: UserRole,
+  roleId: string,
   permissions: Permission[],
 ): Promise<RoleConfig> {
   if (!isSanityConfigured) {
-    const idx = mockRoleConfigs.findIndex((c) => c.role === role)
+    const idx = mockRoleConfigs.findIndex((c) => c._id === roleId)
     const updated: RoleConfig = {
-      _id: mockRoleConfigs[idx]?._id ?? `role-${role}`,
-      role,
+      ...(mockRoleConfigs[idx] ?? mockRoleConfigs[0]),
       permissions,
       updatedAt: new Date().toISOString(),
     }
     if (idx >= 0) mockRoleConfigs[idx] = updated
-    else mockRoleConfigs.push(updated)
     return updated
   }
 
-  const existing = await getSanityClient().fetch<{ _id: string } | null>(
-    `*[_type == "roleConfig" && role == $role][0]{ _id }`,
-    { role },
-  )
-
   const now = new Date().toISOString()
+  await getSanityClient().patch(roleId).set({ permissions, updatedAt: now }).commit()
 
-  if (existing) {
-    await getSanityClient()
-      .patch(existing._id)
-      .set({ permissions, updatedAt: now })
-      .commit()
-
-    return getSanityClient().fetch<RoleConfig>(
-      `*[_type == "roleConfig" && _id == $id][0]{ _id, role, permissions, updatedAt }`,
-      { id: existing._id },
-    )
-  }
-
-  const doc = await getSanityClient().create({
-    _type: 'roleConfig',
-    role,
-    permissions,
-    updatedAt: now,
-  })
-
-  return {
-    _id: doc._id,
-    role,
-    permissions,
-    updatedAt: now,
-  }
+  const raw = await getSanityClient().fetch<Record<string, unknown>>(
+    `*[_type == "roleConfig" && _id == $id][0]{ ${ROLE_FIELDS} }`,
+    { id: roleId },
+  )
+  return normalizeRoleConfig(raw)
 }
 
-export function roleConfigsToMap(configs: RoleConfig[]): Record<UserRole, Permission[]> {
-  return {
-    super_admin:
-      configs.find((c) => c.role === 'super_admin')?.permissions ??
-      DEFAULT_ROLE_PERMISSIONS.super_admin,
-    admin:
-      configs.find((c) => c.role === 'admin')?.permissions ??
-      DEFAULT_ROLE_PERMISSIONS.admin,
-    manager:
-      configs.find((c) => c.role === 'manager')?.permissions ??
-      DEFAULT_ROLE_PERMISSIONS.manager,
+export async function deleteRole(roleId: string): Promise<void> {
+  if (!isSanityConfigured) {
+    mockRoleConfigs = mockRoleConfigs.filter((c) => c._id !== roleId)
+    return
   }
+
+  const role = await getSanityClient().fetch<{ isSystem?: boolean; slug?: string } | null>(
+    `*[_type == "roleConfig" && _id == $id][0]{ isSystem, slug }`,
+    { id: roleId },
+  )
+  if (!role) throw new Error('Role not found')
+  if (role.isSystem || role.slug === 'super_admin') {
+    throw new Error('System roles cannot be deleted')
+  }
+
+  const inUse = await getSanityClient().fetch<number>(
+    `count(*[_type == "employee" && role._ref == $id && isActive == true])`,
+    { id: roleId },
+  )
+  if (inUse > 0) {
+    throw new Error('Cannot delete a role that is assigned to active employees')
+  }
+
+  await getSanityClient().delete(roleId)
+}
+
+export function roleConfigsToMap(configs: RoleConfig[]): Record<string, Permission[]> {
+  const map: Record<string, Permission[]> = {}
+  for (const config of configs) {
+    map[config.slug] = config.permissions
+  }
+  return map
 }
