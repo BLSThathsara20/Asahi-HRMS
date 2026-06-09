@@ -161,10 +161,18 @@ export function resolvePermissions(
   user: SystemUser,
   roleConfigs: RolePermissionMap = DEFAULT_ROLE_PERMISSIONS,
 ): Permission[] {
+  if (user.role === 'super_admin') {
+    return ALL_PERMISSIONS
+  }
+
   if (user.permissions && user.permissions.length > 0) {
     return user.permissions
   }
-  return roleConfigs[user.role] ?? DEFAULT_ROLE_PERMISSIONS[user.role]
+
+  const defaults = DEFAULT_ROLE_PERMISSIONS[user.role]
+  const configured = roleConfigs[user.role] ?? defaults
+  // Merge with code defaults so new permissions work even if Sanity roleConfig is stale
+  return [...new Set<Permission>([...configured, ...defaults])]
 }
 
 export function hasPermission(

@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { SITE_LOGO } from './brand'
+import { assetUrl } from './brand'
 import { hoursFromRecord } from './payroll'
 import type { AttendanceRecord, Employee } from './types'
 import { formatUKDate, formatUKDateTime, formatUKTime } from './uk'
@@ -45,7 +45,7 @@ interface PdfHeaderOptions {
 async function drawHeader(doc: jsPDF, options: PdfHeaderOptions): Promise<number> {
   let y = 16
 
-  const logo = await loadImageBase64(SITE_LOGO)
+  const logo = await loadImageBase64(assetUrl('site_logo.png'))
   if (logo) {
     doc.addImage(logo, 'PNG', 14, y - 4, 28, 14)
     y += 18

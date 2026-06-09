@@ -52,6 +52,8 @@ export interface SystemUser {
 
 export type LoginCheckStatus =
   | { status: 'not_found' }
+  | { status: 'not_configured' }
+  | { status: 'employee_only'; firstName: string }
   | { status: 'pending_setup'; firstName: string }
   | { status: 'active'; firstName: string }
 

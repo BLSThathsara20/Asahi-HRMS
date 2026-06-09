@@ -39,8 +39,10 @@ export async function fetchSystemUsers(): Promise<SystemUser[]> {
 
 export async function checkLoginStatus(email: string): Promise<LoginCheckStatus> {
   if (!isSanityConfigured) {
-    return { status: 'not_found' }
+    return { status: 'not_configured' }
   }
+
+  const normalizedEmail = email.toLowerCase().trim()
 
   const user = await getSanityClient().fetch<{
     firstName: string
@@ -50,10 +52,19 @@ export async function checkLoginStatus(email: string): Promise<LoginCheckStatus>
       firstName,
       mustSetPassword
     }`,
-    { email: email.toLowerCase().trim() },
+    { email: normalizedEmail },
   )
 
-  if (!user) return { status: 'not_found' }
+  if (!user) {
+    const employee = await getSanityClient().fetch<{ firstName: string } | null>(
+      `*[_type == "employee" && email == $email && isActive == true][0] { firstName }`,
+      { email: normalizedEmail },
+    )
+    if (employee) {
+      return { status: 'employee_only', firstName: employee.firstName }
+    }
+    return { status: 'not_found' }
+  }
 
   if (user.mustSetPassword) {
     return { status: 'pending_setup', firstName: user.firstName }
