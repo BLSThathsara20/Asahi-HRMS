@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LogIn, Eye, EyeOff, Phone, KeyRound, ArrowLeft } from 'lucide-react'
 import { AuthLayout } from '../components/auth/AuthLayout'
@@ -10,12 +10,12 @@ import { checkLoginStatus, verifyPhoneForSetup } from '../lib/sanity/auth'
 const inputClass =
   'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-asahi-blue/50 transition-colors'
 
-type Step = 'email' | 'password' | 'setup-phone' | 'setup-password'
+type Step = 'login' | 'setup-phone' | 'setup-password'
 
 export function Login() {
   const { login, completeSetup } = useAuth()
   const { error: notifyError } = useNotifications()
-  const [step, setStep] = useState<Step>('email')
+  const [step, setStep] = useState<Step>('login')
   const [email, setEmail] = useState('')
   const [firstName, setFirstName] = useState('')
   const [password, setPassword] = useState('')
@@ -25,16 +25,9 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const passwordInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (step !== 'password') return
-    const timer = setTimeout(() => passwordInputRef.current?.focus(), 100)
-    return () => clearTimeout(timer)
-  }, [step])
-
-  const resetToEmail = () => {
-    setStep('email')
+  const resetToLogin = () => {
+    setStep('login')
     setPassword('')
     setPhone('')
     setNewPassword('')
@@ -42,7 +35,7 @@ export function Login() {
     setError(null)
   }
 
-  const handleEmailContinue = async (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
@@ -64,24 +57,14 @@ export function Login() {
 
       if (status.status === 'pending_setup') {
         setStep('setup-phone')
-      } else {
-        setStep('password')
+        return
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not check account'
-      setError(msg)
-      notifyError('Sign in', msg)
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  const handlePasswordLogin = async (e: FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+      if (!password) {
+        setError('Please enter your password')
+        return
+      }
 
-    try {
       await login(email, password)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Sign in failed'
@@ -136,13 +119,9 @@ export function Login() {
   }
 
   const titles: Record<Step, { title: string; subtitle: string }> = {
-    email: {
+    login: {
       title: 'Welcome back',
       subtitle: 'Sign in to Asahi Motors London',
-    },
-    password: {
-      title: `Hi ${firstName}`,
-      subtitle: 'Enter your password to continue',
     },
     'setup-phone': {
       title: `Welcome, ${firstName}`,
@@ -158,14 +137,14 @@ export function Login() {
 
   return (
     <AuthLayout title={title} subtitle={subtitle}>
-      {step !== 'email' && (
+      {step !== 'login' && (
         <button
           type="button"
-          onClick={resetToEmail}
+          onClick={resetToLogin}
           className="mb-4 flex items-center gap-1.5 text-xs text-asahi-blue hover:underline cursor-pointer border-0 bg-transparent p-0"
         >
           <ArrowLeft size={14} />
-          Use a different email
+          Back to sign in
         </button>
       )}
 
@@ -180,13 +159,13 @@ export function Login() {
       )}
 
       <AnimatePresence mode="wait">
-        {step === 'email' && (
+        {step === 'login' && (
           <motion.form
-            key="email"
+            key="login"
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -12 }}
-            onSubmit={handleEmailContinue}
+            onSubmit={handleLogin}
             className="space-y-4"
           >
             <div>
@@ -197,36 +176,11 @@ export function Login() {
                 required
                 type="email"
                 autoComplete="email"
+                autoFocus
                 className={inputClass}
                 placeholder="you@asahigroup.co.uk"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <Button type="submit" loading={loading} size="lg" className="w-full" icon={<LogIn size={18} />}>
-              Continue
-            </Button>
-          </motion.form>
-        )}
-
-        {step === 'password' && (
-          <motion.form
-            key="password"
-            initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -12 }}
-            onSubmit={handlePasswordLogin}
-            className="space-y-4"
-          >
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-[var(--text-muted)]">
-                Email
-              </label>
-              <input
-                readOnly
-                type="email"
-                className={`${inputClass} opacity-70`}
-                value={email}
               />
             </div>
             <div>
@@ -235,8 +189,6 @@ export function Login() {
               </label>
               <div className="relative">
                 <input
-                  ref={passwordInputRef}
-                  required
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   className={inputClass}
@@ -280,6 +232,7 @@ export function Login() {
                 required
                 type="tel"
                 autoComplete="tel"
+                autoFocus
                 className={inputClass}
                 placeholder="07700 900000"
                 value={phone}
@@ -310,6 +263,7 @@ export function Login() {
                   required
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
+                  autoFocus
                   className={inputClass}
                   placeholder="Min. 8 characters"
                   value={newPassword}
