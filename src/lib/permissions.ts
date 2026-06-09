@@ -9,6 +9,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'attendance.view',
   'attendance.manage',
   'attendance.export',
+  'profile.view',
   'employees.view',
   'employees.register',
   'employees.manage_pay',
@@ -47,6 +48,12 @@ export const PERMISSION_GROUPS: {
       { key: 'attendance.view', label: 'View Attendance', description: 'Access sign in/out page' },
       { key: 'attendance.manage', label: 'Manage Attendance', description: 'Sign employees in and out' },
       { key: 'attendance.export', label: 'Export Attendance PDF', description: 'Download employee attendance history as PDF' },
+    ],
+  },
+  {
+    label: 'My Profile',
+    permissions: [
+      { key: 'profile.view', label: 'View Own Profile', description: 'View your details and attendance calendar' },
     ],
   },
   {
@@ -133,6 +140,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'users.delete',
     'users.reset_activation',
   ],
+  worker: ['attendance.view', 'profile.view'],
 }
 
 /** Permissions auto-enabled when creating a new custom role */
@@ -146,6 +154,7 @@ export const DEFAULT_NEW_ROLE_PERMISSIONS: Permission[] = [
 export const ROUTE_PERMISSIONS: Record<string, Permission> = {
   '/': 'dashboard.view',
   '/attendance': 'attendance.view',
+  '/profile': 'profile.view',
   '/employees': 'employees.view',
   '/register': 'employees.register',
   '/roles': 'roles.view',
@@ -155,6 +164,7 @@ export const ROUTE_PERMISSIONS: Record<string, Permission> = {
 export const NAV_ITEMS_CONFIG = [
   { to: '/', label: 'Dashboard', permission: 'dashboard.view' as Permission },
   { to: '/attendance', label: 'Sign In / Out', permission: 'attendance.view' as Permission },
+  { to: '/profile', label: 'My Profile', permission: 'profile.view' as Permission },
   { to: '/employees', label: 'People', permission: 'employees.view' as Permission },
   { to: '/register', label: 'Add Person', permission: 'employees.register' as Permission },
   { to: '/finance', label: 'Finance', permission: 'finance.view' as Permission },
@@ -288,6 +298,25 @@ export function getAssignableRoles(
 
 export function getEditableRoles(actor: AuthUser, allRoles: RoleConfig[]): RoleConfig[] {
   return allRoles.filter((r) => canEditRolePermissions(actor, r))
+}
+
+export function canSignAttendanceFor(
+  user: AuthUser | null,
+  employeeId: string,
+  roleConfigs?: RolePermissionMap,
+): boolean {
+  if (!user) return false
+  if (hasPermission(user, 'attendance.manage', roleConfigs)) return true
+  return (
+    user._id === employeeId &&
+    hasPermission(user, 'attendance.view', roleConfigs) &&
+    !hasPermission(user, 'attendance.manage', roleConfigs)
+  )
+}
+
+export function isWorkerRole(user: AuthUser | null): boolean {
+  if (!user) return false
+  return getUserRoleSlug(user) === 'worker'
 }
 
 export function getFirstAllowedRoute(

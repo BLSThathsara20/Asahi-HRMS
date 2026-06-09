@@ -13,6 +13,7 @@ import { Login } from './pages/Login'
 import { SetupSuperAdmin } from './pages/SetupSuperAdmin'
 import { RolesPermissions } from './pages/RolesPermissions'
 import { Finance } from './pages/Finance'
+import { MyProfile } from './pages/MyProfile'
 
 export default function App() {
   return (
@@ -36,6 +37,9 @@ export default function App() {
                 </Route>
                 <Route element={<PermissionRoute permission="attendance.view" />}>
                   <Route path="attendance" element={<Attendance />} />
+                </Route>
+                <Route element={<PermissionRoute permission="profile.view" />}>
+                  <Route path="profile" element={<MyProfile />} />
                 </Route>
                 <Route element={<PermissionRoute permission="employees.view" />}>
                   <Route path="employees" element={<Employees />} />

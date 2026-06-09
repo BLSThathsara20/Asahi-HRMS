@@ -14,6 +14,7 @@ export type Permission =
   | 'attendance.view'
   | 'attendance.manage'
   | 'attendance.export'
+  | 'profile.view'
   | 'employees.view'
   | 'employees.register'
   | 'employees.manage_pay'
