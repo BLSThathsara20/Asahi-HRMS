@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { LogIn, LogOut, Settings2, UserX } from 'lucide-react'
-import { format } from 'date-fns'
-import { enGB } from 'date-fns/locale'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Badge } from '../components/ui/Badge'
@@ -57,8 +55,6 @@ export function Dashboard() {
   const { departments, reload: reloadDepartments } = useDepartments()
   const [showDeptModal, setShowDeptModal] = useState(false)
   const [attendanceSearch, setAttendanceSearch] = useState('')
-
-  const todayLabel = format(new Date(), 'EEEE, d MMMM yyyy', { locale: enGB })
 
   const staffEmployees = useMemo(
     () => employees.filter((e) => !isSuperAdminEmployee(e)),
@@ -138,7 +134,6 @@ export function Dashboard() {
     <div>
       <Header
         title="Dashboard"
-        subtitle={todayLabel}
         actions={
           showDeptManage ? (
             <button
