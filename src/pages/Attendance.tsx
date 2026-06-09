@@ -11,6 +11,7 @@ import { useAttendance } from '../hooks/useAttendance'
 import { useAuth } from '../context/AuthContext'
 import { getDepartmentColor, getDepartmentLabel } from '../lib/types'
 import { usePermissions } from '../hooks/usePermissions'
+import { isSuperAdmin } from '../lib/permissions'
 import { PermissionGate } from '../components/auth/ProtectedRoute'
 import { AttendanceHistoryPanel } from '../components/attendance/AttendanceHistoryPanel'
 import { AttendanceExportPanel } from '../components/attendance/AttendanceExportPanel'
@@ -35,9 +36,13 @@ export function Attendance() {
   const [success, setSuccess] = useState<string | null>(null)
   const [justAction, setJustAction] = useState<'in' | 'out' | null>(null)
   const [showCalendar, setShowCalendar] = useState(false)
+  const isOwner = user ? isSuperAdmin(user) : false
 
   useEffect(() => {
-    if (!user) return
+    if (!user || isOwner) {
+      setLoadingMe(false)
+      return
+    }
     let cancelled = false
     fetchEmployeeById(user._id)
       .then((emp) => {
@@ -49,7 +54,7 @@ export function Attendance() {
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [user, isOwner])
 
   const myStatus = user
     ? todayRecords.find((r) => r.employee._id === user._id)
@@ -118,9 +123,15 @@ export function Attendance() {
 
       <Header
         title="Attendance"
-        subtitle="Clock in or out and review attendance records"
+        subtitle={
+          isOwner
+            ? 'Review and manage team attendance'
+            : 'Clock in or out and review attendance records'
+        }
       />
 
+      {!isOwner && (
+      <>
       <AnimatePresence>
         {success && (
           <motion.div
@@ -348,6 +359,8 @@ export function Attendance() {
           <p className="text-sm text-[var(--text-muted)]">Could not load your profile.</p>
         )}
       </GlassCard>
+      </>
+      )}
 
       {user && (
         <AttendanceHistoryPanel
