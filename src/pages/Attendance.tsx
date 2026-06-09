@@ -11,6 +11,8 @@ import { EmployeeAvatar } from '../components/EmployeeAvatar'
 import { PersonName } from '../components/PersonName'
 import { useAttendance } from '../hooks/useAttendance'
 import { useAuth } from '../context/AuthContext'
+import { useNotifications } from '../context/NotificationContext'
+import { getSignInGreeting, getSignOutGreeting } from '../lib/attendanceMessages'
 import { getDepartmentColor, getDepartmentLabel } from '../lib/types'
 import { usePermissions } from '../hooks/usePermissions'
 import { canViewAttendanceHistory, isSuperAdmin } from '../lib/permissions'
@@ -30,10 +32,11 @@ export function Attendance() {
   const { can } = usePermissions()
   const { attendanceOnly } = useNavLayout()
   const { todayRecords, actionLoading, error, signIn, signOut } = useAttendance()
+  const { success: notifySuccess } = useNotifications()
   const office = useOfficeHours()
   const [me, setMe] = useState<Employee | null>(null)
   const [loadingMe, setLoadingMe] = useState(true)
-  const [success, setSuccess] = useState<string | null>(null)
+  const [success, setSuccess] = useState<{ title: string; message: string } | null>(null)
   const [justAction, setJustAction] = useState<'in' | 'out' | null>(null)
   const [showCalendar, setShowCalendar] = useState(false)
   const isOwner = user ? isSuperAdmin(user) : false
@@ -62,13 +65,14 @@ export function Attendance() {
   const isSignedIn = myStatus?.status === 'signed_in'
   const isDayComplete = myStatus?.status === 'signed_out'
 
-  const showSuccess = (message: string, action: 'in' | 'out') => {
-    setSuccess(message)
+  const showSuccess = (greeting: { title: string; message: string }, action: 'in' | 'out') => {
+    setSuccess(greeting)
     setJustAction(action)
+    notifySuccess(greeting.title, greeting.message)
     setTimeout(() => {
       setSuccess(null)
       setJustAction(null)
-    }, 3200)
+    }, 5000)
   }
 
   const handleSignIn = async () => {
@@ -76,18 +80,18 @@ export function Attendance() {
     try {
       const location = await captureAttendanceLocation()
       await signIn(user._id, location)
-      showSuccess('You are signed in — have a great day!', 'in')
+      showSuccess(getSignInGreeting(user.firstName), 'in')
     } catch {
       /* error shown via hook */
     }
   }
 
   const handleSignOut = async () => {
-    if (!myStatus) return
+    if (!myStatus || !user) return
     try {
       const location = await captureAttendanceLocation()
       await signOut(myStatus._id, location)
-      showSuccess('You are signed out — see you next time!', 'out')
+      showSuccess(getSignOutGreeting(user.firstName), 'out')
     } catch {
       /* error shown via hook */
     }
@@ -139,16 +143,20 @@ export function Attendance() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-            className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400"
+            className="mb-4 flex items-start gap-3 rounded-xl bg-emerald-500/15 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400"
           >
             <motion.span
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', delay: 0.1 }}
+              className="mt-0.5 shrink-0"
             >
               <CheckCircle2 size={16} />
             </motion.span>
-            {success}
+            <div className="min-w-0">
+              <p className="font-semibold text-[var(--text-primary)]">{success.title}</p>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">{success.message}</p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
