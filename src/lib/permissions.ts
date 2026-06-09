@@ -178,6 +178,10 @@ export function isSuperAdmin(user: AuthUser): boolean {
   return getUserRoleSlug(user) === 'super_admin'
 }
 
+export function isSuperAdminEmployee(employee: { role?: { slug?: string } | null }): boolean {
+  return employee.role?.slug === 'super_admin'
+}
+
 export function resolvePermissions(
   user: AuthUser,
   roleConfigs: RolePermissionMap = DEFAULT_ROLE_PERMISSIONS,

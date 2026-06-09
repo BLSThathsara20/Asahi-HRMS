@@ -13,6 +13,7 @@ import { useEmployees } from '../hooks/useEmployees'
 import { useAttendance } from '../hooks/useAttendance'
 import { useDepartments } from '../hooks/useDepartments'
 import { usePermissions } from '../hooks/usePermissions'
+import { isSuperAdminEmployee } from '../lib/permissions'
 import { getDepartmentLabel } from '../lib/types'
 import { AttendanceLocationDisplay } from '../components/attendance/AttendanceLocationDisplay'
 import { formatUKTime } from '../lib/uk'
@@ -57,7 +58,20 @@ export function Dashboard() {
 
   const todayLabel = format(new Date(), 'EEEE, d MMMM yyyy', { locale: enGB })
 
-  const todayAttendance = useMemo(() => dedupeTodayRecords(todayRecords), [todayRecords])
+  const staffEmployees = useMemo(
+    () => employees.filter((e) => !isSuperAdminEmployee(e)),
+    [employees],
+  )
+
+  const staffTodayRecords = useMemo(
+    () => todayRecords.filter((r) => !isSuperAdminEmployee(r.employee)),
+    [todayRecords],
+  )
+
+  const todayAttendance = useMemo(
+    () => dedupeTodayRecords(staffTodayRecords),
+    [staffTodayRecords],
+  )
 
   const onSite = useMemo(
     () => todayAttendance.filter((r) => r.status === 'signed_in'),
@@ -67,7 +81,7 @@ export function Dashboard() {
     () => todayAttendance.filter((r) => r.status === 'signed_out'),
     [todayAttendance],
   )
-  const notInYet = Math.max(employees.length - todayAttendance.length, 0)
+  const notInYet = Math.max(staffEmployees.length - todayAttendance.length, 0)
 
   const sortedTodayRecords = useMemo(
     () => [
