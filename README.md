@@ -199,3 +199,35 @@ sanity/schema/    # Sanity document schemas
 npm run build
 npm run preview
 ```
+
+## Deploy to GitHub Pages
+
+Live URL (after setup): **https://blsthathsara20.github.io/Asahi-HRMS/**
+
+Pushes to `main` deploy automatically via GitHub Actions (`.github/workflows/deploy-pages.yml`).
+
+### One-time setup
+
+1. **Enable Pages** — Repo → **Settings** → **Pages** → **Build and deployment** → Source: **GitHub Actions**.
+
+2. **Add repository secrets** (Settings → Secrets and variables → Actions):
+
+   | Secret | Value |
+   |--------|--------|
+   | `VITE_SANITY_PROJECT_ID` | From your `.env` |
+   | `VITE_SANITY_DATASET` | e.g. `production` |
+   | `VITE_SANITY_API_VERSION` | e.g. `2024-01-01` |
+   | `VITE_SANITY_TOKEN` | Sanity Developer token |
+   | `VITE_GOOGLE_SHEETS_WEBHOOK_URL` | Optional — Apps Script URL |
+
+3. **Sanity CORS** — In [sanity.io/manage](https://www.sanity.io/manage) → API → CORS origins, add:
+   - `https://blsthathsara20.github.io`
+
+4. Push to `main` (or run the workflow manually under **Actions**).
+
+### Local production preview (same base path as Pages)
+
+```bash
+VITE_BASE_PATH=/Asahi-HRMS/ npm run build
+npm run preview
+```

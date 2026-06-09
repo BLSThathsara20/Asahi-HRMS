@@ -17,7 +17,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
+        <BrowserRouter
+          basename={import.meta.env.BASE_URL.replace(/\/$/, '') || undefined}
+        >
           <Routes>
             <Route element={<PublicOnlyRoute />}>
               <Route path="/login" element={<Login />} />
