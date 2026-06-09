@@ -1,14 +1,16 @@
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { enGB } from 'date-fns/locale'
+import type { ReactNode } from 'react'
 import { ThemeToggle } from '../ui/ThemeToggle'
 
 interface HeaderProps {
   title: string
   subtitle?: string
+  actions?: ReactNode
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, actions }: HeaderProps) {
   const now = new Date()
   const ukDate = format(now, 'EEEE, d MMMM yyyy', { locale: enGB })
   const ukDateShort = format(now, 'd MMM yyyy', { locale: enGB })
@@ -38,6 +40,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
 
         <div className="hidden shrink-0 items-center gap-3 sm:flex">
+          {actions}
           <div className="text-right">
             <p className="text-sm font-medium text-[var(--text-primary)]">{ukTime}</p>
             <p className="hidden text-xs text-[var(--text-muted)] md:block">{ukDate}</p>
@@ -46,8 +49,11 @@ export function Header({ title, subtitle }: HeaderProps) {
           <ThemeToggle />
         </div>
 
-        <div className="shrink-0 text-right sm:hidden">
-          <p className="text-xs font-medium text-[var(--text-primary)]">{ukTime}</p>
+        <div className="flex shrink-0 items-center gap-2 sm:hidden">
+          {actions}
+          <div className="text-right">
+            <p className="text-xs font-medium text-[var(--text-primary)]">{ukTime}</p>
+          </div>
         </div>
       </div>
     </motion.header>

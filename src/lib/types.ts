@@ -163,6 +163,7 @@ export interface AttendanceLocation {
   longitude: number
   accuracy?: number
   capturedAt: string
+  placeName?: string
 }
 
 export interface AttendanceRecord {

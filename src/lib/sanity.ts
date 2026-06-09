@@ -25,8 +25,8 @@ function getClient() {
 const DEPT_FIELDS = `_id, name, "slug": slug.current, color, isActive`
 
 const ATTENDANCE_LOCATION_FIELDS = `
-  signInLocation { latitude, longitude, accuracy, capturedAt },
-  signOutLocation { latitude, longitude, accuracy, capturedAt }
+  signInLocation { latitude, longitude, accuracy, capturedAt, placeName },
+  signOutLocation { latitude, longitude, accuracy, capturedAt, placeName }
 `
 
 const ROLE_FIELDS = `_id, slug, name, color, permissions, isSystem, rank, updatedAt, role`

@@ -1,11 +1,12 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Users, LogIn, LogOut, Building2 } from 'lucide-react'
+import { Users, LogIn, LogOut, Building2, Settings2 } from 'lucide-react'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Badge } from '../components/ui/Badge'
+import { Button } from '../components/ui/Button'
 import { EmployeeAvatar } from '../components/EmployeeAvatar'
-import { PermissionGate } from '../components/auth/ProtectedRoute'
-import { DepartmentManager } from '../components/dashboard/DepartmentManager'
+import { DepartmentManagerModal } from '../components/dashboard/DepartmentManagerModal'
 import { useEmployees } from '../hooks/useEmployees'
 import { useAttendance } from '../hooks/useAttendance'
 import { useDepartments } from '../hooks/useDepartments'
@@ -13,6 +14,8 @@ import { usePermissions } from '../hooks/usePermissions'
 import { getDepartmentLabel } from '../lib/types'
 import { AttendanceLocationDisplay } from '../components/attendance/AttendanceLocationDisplay'
 import { formatUKTime } from '../lib/uk'
+
+const INITIAL_ATTENDANCE_VISIBLE = 4
 
 const container = {
   hidden: { opacity: 0 },
@@ -29,6 +32,8 @@ export function Dashboard() {
   const { employees, loading: empLoading, reload: reloadEmployees } = useEmployees()
   const { todayRecords, loading: attLoading } = useAttendance()
   const { departments, reload: reloadDepartments } = useDepartments()
+  const [showDeptModal, setShowDeptModal] = useState(false)
+  const [attendanceVisible, setAttendanceVisible] = useState(INITIAL_ATTENDANCE_VISIBLE)
 
   const signedIn = todayRecords.filter((r) => r.status === 'signed_in').length
   const signedOut = todayRecords.filter((r) => r.status === 'signed_out').length
@@ -50,11 +55,27 @@ export function Dashboard() {
   const showDeptChart = can('dashboard.departments')
   const showDeptManage = can('departments.manage')
 
+  const visibleRecords = todayRecords.slice(0, attendanceVisible)
+  const hasMoreAttendance = todayRecords.length > attendanceVisible
+
   return (
     <div>
       <Header
         title="Dashboard"
         subtitle="Asahi Motors London"
+        actions={
+          showDeptManage ? (
+            <button
+              type="button"
+              onClick={() => setShowDeptModal(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-asahi-blue transition-colors hover:bg-asahi-blue/15 cursor-pointer border-0"
+              aria-label="Manage departments"
+              title="Manage departments"
+            >
+              <Settings2 size={18} />
+            </button>
+          ) : undefined
+        }
       />
 
       <motion.div variants={container} initial="hidden" animate="show" className="space-y-4">
@@ -136,7 +157,7 @@ export function Dashboard() {
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {showAttendance && (
-            <motion.div variants={item} className={showDeptChart || showDeptManage ? 'lg:col-span-2' : 'lg:col-span-3'}>
+            <motion.div variants={item} className={showDeptChart ? 'lg:col-span-2' : 'lg:col-span-3'}>
               <GlassCard strong className="p-6">
                 <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                   Today's Attendance
@@ -146,42 +167,64 @@ export function Dashboard() {
                 ) : todayRecords.length === 0 ? (
                   <p className="text-sm text-[var(--text-muted)]">No attendance records today.</p>
                 ) : (
-                  <div className="space-y-3">
-                    {todayRecords.map((record) => (
-                      <motion.div
-                        key={record._id}
-                        layout
-                        className="flex items-center justify-between rounded-xl bg-white/10 px-4 py-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <EmployeeAvatar employee={record.employee} />
-                          <div>
-                            <p className="text-sm font-medium text-[var(--text-primary)]">
-                              {record.employee.firstName} {record.employee.lastName}
-                            </p>
-                            <p className="text-xs text-[var(--text-muted)]">
-                              {getDepartmentLabel(record.employee.department)} · In{' '}
-                              {formatUKTime(record.signInTime)}
-                              {record.signOutTime && ` · Out ${formatUKTime(record.signOutTime)}`}
-                            </p>
-                            <AttendanceLocationDisplay record={record} compact />
-                          </div>
-                        </div>
-                        <Badge
-                          color={record.status === 'signed_in' ? '#059669' : '#64748b'}
+                  <>
+                    <div className="space-y-3">
+                      {visibleRecords.map((record) => (
+                        <motion.div
+                          key={record._id}
+                          layout
+                          className="flex items-center justify-between rounded-xl bg-white/10 px-4 py-3"
                         >
-                          <span
-                            className="inline-block h-1.5 w-1.5 rounded-full"
-                            style={{
-                              backgroundColor:
-                                record.status === 'signed_in' ? '#059669' : '#64748b',
-                            }}
-                          />
-                          {record.status === 'signed_in' ? 'On Site' : 'Left'}
-                        </Badge>
-                      </motion.div>
-                    ))}
-                  </div>
+                          <div className="flex items-center gap-3">
+                            <EmployeeAvatar employee={record.employee} />
+                            <div>
+                              <p className="text-sm font-medium text-[var(--text-primary)]">
+                                {record.employee.firstName} {record.employee.lastName}
+                              </p>
+                              <p className="text-xs text-[var(--text-muted)]">
+                                {getDepartmentLabel(record.employee.department)} · In{' '}
+                                {formatUKTime(record.signInTime)}
+                                {record.signOutTime && ` · Out ${formatUKTime(record.signOutTime)}`}
+                              </p>
+                              <AttendanceLocationDisplay
+                                record={record}
+                                compact
+                                adminOnly={false}
+                              />
+                            </div>
+                          </div>
+                          <Badge
+                            color={record.status === 'signed_in' ? '#059669' : '#64748b'}
+                          >
+                            <span
+                              className="inline-block h-1.5 w-1.5 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  record.status === 'signed_in' ? '#059669' : '#64748b',
+                              }}
+                            />
+                            {record.status === 'signed_in' ? 'On Site' : 'Left'}
+                          </Badge>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {hasMoreAttendance && (
+                      <div className="mt-4 text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setAttendanceVisible((count) =>
+                              Math.min(count + 4, todayRecords.length),
+                            )
+                          }
+                        >
+                          Load more ({todayRecords.length - attendanceVisible} remaining)
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </GlassCard>
             </motion.div>
@@ -221,17 +264,7 @@ export function Dashboard() {
           )}
         </div>
 
-        <PermissionGate permission="departments.manage">
-          <motion.div variants={item}>
-            <DepartmentManager
-              departments={departments}
-              employees={employees}
-              onRefresh={handleRefresh}
-            />
-          </motion.div>
-        </PermissionGate>
-
-        {!showStats && !showAttendance && !showDeptChart && !showDeptManage && (
+        {!showStats && !showAttendance && !showDeptChart && (
           <GlassCard strong className="p-8 text-center">
             <p className="text-[var(--text-muted)]">
               Your access level does not include any dashboard features.
@@ -240,6 +273,15 @@ export function Dashboard() {
           </GlassCard>
         )}
       </motion.div>
+
+      {showDeptModal && (
+        <DepartmentManagerModal
+          departments={departments}
+          employees={employees}
+          onRefresh={handleRefresh}
+          onClose={() => setShowDeptModal(false)}
+        />
+      )}
     </div>
   )
 }

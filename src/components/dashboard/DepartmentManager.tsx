@@ -16,12 +16,14 @@ interface DepartmentManagerProps {
   departments: Department[]
   employees: Employee[]
   onRefresh: () => void
+  embedded?: boolean
 }
 
 export function DepartmentManager({
   departments,
   employees,
   onRefresh,
+  embedded = false,
 }: DepartmentManagerProps) {
   const [name, setName] = useState('')
   const [color, setColor] = useState(PRESET_COLORS[0])
@@ -72,14 +74,16 @@ export function DepartmentManager({
   const deptEmployees = (deptId: string) =>
     employees.filter((e) => e.department?._id === deptId)
 
-  return (
-    <GlassCard strong className="p-6">
-      <div className="mb-4 flex items-center gap-2">
-        <Building2 size={18} className="text-asahi-blue" />
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-          Department Management
-        </h2>
-      </div>
+  const content = (
+    <>
+      {!embedded && (
+        <div className="mb-4 flex items-center gap-2">
+          <Building2 size={18} className="text-asahi-blue" />
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+            Department Management
+          </h2>
+        </div>
+      )}
 
       {success && (
         <motion.div
@@ -181,7 +185,10 @@ export function DepartmentManager({
           ))
         )}
       </div>
-
-    </GlassCard>
+    </>
   )
+
+  if (embedded) return content
+
+  return <GlassCard strong className="p-6">{content}</GlassCard>
 }

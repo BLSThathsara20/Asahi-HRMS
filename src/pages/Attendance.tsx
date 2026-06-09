@@ -16,7 +16,7 @@ import { AttendanceExportPanel } from '../components/attendance/AttendanceExport
 import { GoogleSheetsStatus } from '../components/attendance/GoogleSheetsStatus'
 import { AttendanceLocationDisplay } from '../components/attendance/AttendanceLocationDisplay'
 import { MyAttendanceCalendarModal } from '../components/attendance/MyAttendanceCalendarModal'
-import { captureCurrentLocation, toAttendanceLocation } from '../lib/geolocation'
+import { captureAttendanceLocation } from '../lib/geolocation'
 import { fetchEmployeeById } from '../lib/sanity'
 import { formatUKTime } from '../lib/uk'
 import { useOfficeHours } from '../hooks/useOfficeHours'
@@ -68,7 +68,7 @@ export function Attendance() {
   const handleSignIn = async () => {
     if (!user) return
     try {
-      const location = toAttendanceLocation(await captureCurrentLocation())
+      const location = await captureAttendanceLocation()
       await signIn(user._id, location)
       showSuccess('You are signed in — have a great day!', 'in')
     } catch {
@@ -79,7 +79,7 @@ export function Attendance() {
   const handleSignOut = async () => {
     if (!myStatus) return
     try {
-      const location = toAttendanceLocation(await captureCurrentLocation())
+      const location = await captureAttendanceLocation()
       await signOut(myStatus._id, location)
       showSuccess('You are signed out — see you next time!', 'out')
     } catch {

@@ -55,6 +55,7 @@ export default {
         { name: 'longitude', title: 'Longitude', type: 'number' },
         { name: 'accuracy', title: 'Accuracy (m)', type: 'number' },
         { name: 'capturedAt', title: 'Captured At', type: 'datetime' },
+        { name: 'placeName', title: 'Place Name', type: 'string' },
       ],
     },
     {
@@ -66,6 +67,7 @@ export default {
         { name: 'longitude', title: 'Longitude', type: 'number' },
         { name: 'accuracy', title: 'Accuracy (m)', type: 'number' },
         { name: 'capturedAt', title: 'Captured At', type: 'datetime' },
+        { name: 'placeName', title: 'Place Name', type: 'string' },
       ],
     },
   ],
