@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --color-asahi-blue: #1a6fd4;
+  --color-asahi-navy: #0d3b7a;
+  --color-asahi-purple: #6b4ce6;
+}
+
+:root {
+  --gradient-light: linear-gradient(135deg, #4facfe 0%, #6b4ce6 55%, #a855f7 100%);
+  --gradient-dark: linear-gradient(135deg, #0f172a 0%, #1e1b4b 45%, #312e81 100%);
+  --glass-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --surface: rgba(255, 255, 255, 0.72);
+}
+
+.dark {
+  --glass-bg: rgba(15, 23, 42, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --surface: rgba(15, 23, 42, 0.65);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  color: var(--text-primary);
+  min-height: 100dvh;
+  overscroll-behavior: none;
+  transition: color 0.4s ease;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+/* App-like touch targets */
+@media (max-width: 1023px) {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+}
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-strong {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.gradient-bg {
+  background: var(--gradient-light);
+  transition: background 0.6s ease;
+}
+
+.dark .gradient-bg {
+  background: var(--gradient-dark);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #1a6fd4, #6b4ce6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(107, 76, 230, 0.4);
+  border-radius: 3px;
+}
