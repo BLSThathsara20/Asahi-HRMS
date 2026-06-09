@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { AppLoader } from '../ui/Loading'
 import { useAuth } from '../../context/AuthContext'
 import { getFirstAllowedRoute, ROUTE_PERMISSIONS } from '../../lib/permissions'
 import { isSanityConfigured } from '../../lib/sanity/client'
@@ -14,13 +15,7 @@ export function ProtectedRoute() {
   }
 
   if (loading) {
-    return (
-      <div className="gradient-bg flex min-h-screen items-center justify-center">
-        <div className="glass-strong rounded-2xl px-8 py-6 text-sm text-[var(--text-primary)]">
-          Loading...
-        </div>
-      </div>
-    )
+    return <AppLoader message="Starting up" />
   }
 
   if (hasUsers === false) {
@@ -39,13 +34,7 @@ export function PublicOnlyRoute() {
   const location = useLocation()
 
   if (loading) {
-    return (
-      <div className="gradient-bg flex min-h-screen items-center justify-center">
-        <div className="glass-strong rounded-2xl px-8 py-6 text-sm text-[var(--text-primary)]">
-          Loading...
-        </div>
-      </div>
-    )
+    return <AppLoader message="Starting up" />
   }
 
   if (hasUsers === false && location.pathname !== '/setup') {

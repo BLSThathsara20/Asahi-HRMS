@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { X, PoundSterling, History } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
+import { PersonName } from '../PersonName'
 import { updateEmployeePay } from '../../lib/sanity'
 import {
   EMPLOYMENT_TYPE_LABELS,
@@ -96,7 +97,7 @@ export function EmployeePayModal({ employee, onClose, onSaved }: EmployeePayModa
                 Update Pay
               </h2>
               <p className="text-sm text-[var(--text-muted)]">
-                {employee.firstName} {employee.lastName} · {employee.employeeId}
+                <PersonName person={employee} /> · {employee.employeeId}
               </p>
             </div>
             <button

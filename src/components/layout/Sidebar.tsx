@@ -7,6 +7,7 @@ import { getRoleLabel, getRoleColor } from '../../lib/auth'
 import { getNavItems } from '../../lib/navigation'
 import { Badge } from '../ui/Badge'
 import { Logo } from '../Logo'
+import { PersonName } from '../PersonName'
 import { LogOut } from 'lucide-react'
 
 export function Sidebar() {
@@ -59,7 +60,7 @@ export function Sidebar() {
       {user && (
         <div className="mt-4 border-t border-white/10 pt-4 px-2">
           <p className="truncate text-sm font-medium text-[var(--text-primary)]">
-            {user.firstName} {user.lastName}
+            <PersonName person={user} />
           </p>
           <Badge color={getRoleColor(user.role)} className="mt-1.5">
             {getRoleLabel(user.role)}

@@ -12,8 +12,10 @@ import {
 } from 'lucide-react'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
+import { LoadingSkeleton } from '../components/ui/Loading'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
+import { PersonName } from '../components/PersonName'
 import { PermissionGate } from '../components/auth/ProtectedRoute'
 import { EmployeeSalaryCalculator } from '../components/finance/EmployeeSalaryCalculator'
 import { MarkPaidModal, PaymentRecordSummary } from '../components/finance/MarkPaidModal'
@@ -308,7 +310,7 @@ export function Finance() {
         </h2>
 
         {loading ? (
-          <p className="text-sm text-[var(--text-muted)]">Loading payroll...</p>
+          <LoadingSkeleton rows={4} />
         ) : lines.length === 0 ? (
           <p className="text-sm text-[var(--text-muted)]">No people found.</p>
         ) : (
@@ -322,7 +324,7 @@ export function Finance() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <p className="font-medium text-[var(--text-primary)]">
-                      {line.employee.firstName} {line.employee.lastName}
+                      <PersonName person={line.employee} />
                     </p>
                     <p className="text-xs text-[var(--text-muted)]">
                       {line.employee.employeeId} · {line.employee.jobTitle}

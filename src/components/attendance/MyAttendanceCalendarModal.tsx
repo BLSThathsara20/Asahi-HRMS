@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { X, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import { Modal } from '../ui/Modal'
+import { LoadingState } from '../ui/Loading'
 import { EmployeeAvatar } from '../EmployeeAvatar'
+import { PersonName } from '../PersonName'
 import { AttendanceCalendar } from '../employees/AttendanceCalendar'
 import { fetchEmployeeAttendanceHistory } from '../../lib/sanity'
 import {
@@ -62,7 +64,7 @@ export function MyAttendanceCalendarModal({ person, onClose }: MyAttendanceCalen
                   My attendance
                 </h2>
                 <p className="text-xs text-[var(--text-muted)]">
-                  {person.firstName} {person.lastName}
+                  <PersonName person={person} />
                 </p>
               </div>
             </div>
@@ -115,9 +117,7 @@ export function MyAttendanceCalendarModal({ person, onClose }: MyAttendanceCalen
             </div>
 
             {loading ? (
-              <p className="py-8 text-center text-sm text-[var(--text-muted)]">
-                Loading calendar...
-              </p>
+              <LoadingState message="Loading calendar" size="sm" />
             ) : (
               <AttendanceCalendar yearMonth={yearMonth} dayMap={dayMap} today={today} />
             )}

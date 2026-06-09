@@ -3,8 +3,10 @@ import { motion } from 'framer-motion'
 import { Search, PoundSterling, History, Pencil, Trash2, UserRound } from 'lucide-react'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
+import { LoadingSkeleton } from '../components/ui/Loading'
 import { Badge } from '../components/ui/Badge'
 import { EmployeeAvatar } from '../components/EmployeeAvatar'
+import { PersonName } from '../components/PersonName'
 import { EmployeePayModal } from '../components/employees/EmployeePayModal'
 import { EmployeeEditor } from '../components/employees/EmployeeEditor'
 import { PersonProfileModal } from '../components/employees/PersonProfileModal'
@@ -104,7 +106,7 @@ export function Employees() {
       </GlassCard>
 
       {loading ? (
-        <p className="text-sm text-[var(--text-muted)]">Loading people...</p>
+        <LoadingSkeleton rows={6} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 [&>div]:h-32" />
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((employee, i) => {
@@ -125,7 +127,7 @@ export function Employees() {
                     <EmployeeAvatar employee={employee} size="lg" />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-[var(--text-primary)]">
-                        {employee.firstName} {employee.lastName}
+                        <PersonName person={employee} />
                       </p>
                       <p className="text-sm text-[var(--text-muted)]">{employee.jobTitle}</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">

@@ -4,6 +4,7 @@ import { Building2, Plus, Trash2, CheckCircle2 } from 'lucide-react'
 import { GlassCard } from '../ui/GlassCard'
 import { Button } from '../ui/Button'
 import { EmployeeAvatar } from '../EmployeeAvatar'
+import { PersonName } from '../PersonName'
 import { createDepartment, deleteDepartment } from '../../lib/sanity/departments'
 import type { Department, Employee } from '../../lib/types'
 
@@ -175,7 +176,7 @@ export function DepartmentManager({
                     >
                       <EmployeeAvatar employee={emp} size="sm" />
                       <span className="text-xs text-[var(--text-secondary)]">
-                        {emp.firstName} {emp.lastName}
+                        <PersonName person={emp} />
                       </span>
                     </div>
                   ))}

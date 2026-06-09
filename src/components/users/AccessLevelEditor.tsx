@@ -3,6 +3,7 @@ import { X, Shield, RotateCcw } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { Badge } from '../ui/Badge'
+import { PersonName } from '../PersonName'
 import { PermissionChecklist } from '../permissions/PermissionChecklist'
 import { useAuth } from '../../context/AuthContext'
 import { getRoleColor, getRoleLabel } from '../../lib/auth'
@@ -73,7 +74,7 @@ export function AccessLevelEditor({ targetUser, onClose, onSaved }: AccessLevelE
                 User Access Levels
               </h2>
               <p className="mt-1 text-sm text-[var(--text-muted)]">
-                {targetUser.firstName} {targetUser.lastName}
+                <PersonName person={targetUser} />
               </p>
               <Badge color={getRoleColor(targetUser.role)} className="mt-2">
                 {getRoleLabel(targetUser.role)}

@@ -3,6 +3,8 @@ import { format, parseISO } from 'date-fns'
 import { enGB } from 'date-fns/locale'
 import { ChevronDown, FileDown, List, Search, SlidersHorizontal } from 'lucide-react'
 import { GlassCard } from '../ui/GlassCard'
+import { LoadingSkeleton } from '../ui/Loading'
+import { PersonName } from '../PersonName'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { EmployeeAvatar } from '../EmployeeAvatar'
@@ -408,7 +410,7 @@ export function AttendanceHistoryPanel({
         )}
 
         {loading ? (
-          <p className="py-10 text-center text-sm text-[var(--text-muted)]">Loading records...</p>
+          <LoadingSkeleton rows={5} />
         ) : filtered.length === 0 ? (
           <p className="py-10 text-center text-sm text-[var(--text-muted)]">
             No attendance records match your filters.
@@ -436,7 +438,7 @@ export function AttendanceHistoryPanel({
                           <div className="min-w-0">
                             {canManageTeam && (
                               <p className="truncate text-sm font-medium text-[var(--text-primary)]">
-                                {record.employee.firstName} {record.employee.lastName}
+                                <PersonName person={record.employee} />
                               </p>
                             )}
                             <p className="text-xs text-[var(--text-muted)]">

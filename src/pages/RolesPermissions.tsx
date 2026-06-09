@@ -3,6 +3,8 @@ import { motion } from 'framer-motion'
 import { Shield, Users, CheckCircle2, Settings2, RotateCcw, Plus, Trash2 } from 'lucide-react'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
+import { LoadingSkeleton } from '../components/ui/Loading'
+import { PersonName } from '../components/PersonName'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { PermissionChecklist } from '../components/permissions/PermissionChecklist'
@@ -302,7 +304,7 @@ export function RolesPermissions() {
           </h2>
 
           {usersLoading ? (
-            <p className="text-sm text-[var(--text-muted)]">Loading...</p>
+            <LoadingSkeleton rows={4} />
           ) : users.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)]">No users found.</p>
           ) : (
@@ -317,7 +319,7 @@ export function RolesPermissions() {
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <p className="font-medium text-[var(--text-primary)]">
-                          {u.firstName} {u.lastName}
+                          <PersonName person={u} />
                         </p>
                         <p className="text-xs text-[var(--text-muted)]">{u.email}</p>
                         <p className="text-xs text-[var(--text-muted)]">

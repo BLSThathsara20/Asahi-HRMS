@@ -11,7 +11,9 @@ import {
   CalendarDays,
 } from 'lucide-react'
 import { EmployeeAvatar } from '../EmployeeAvatar'
+import { PersonName } from '../PersonName'
 import { Modal } from '../ui/Modal'
+import { LoadingState } from '../ui/Loading'
 import { Badge } from '../ui/Badge'
 import { AttendanceCalendar } from './AttendanceCalendar'
 import { getRoleColor, getRoleLabel } from '../../lib/auth'
@@ -73,7 +75,7 @@ export function PersonProfileModal({ person, onClose }: PersonProfileModalProps)
               <EmployeeAvatar employee={person} size="lg" />
               <div>
                 <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-                  {person.firstName} {person.lastName}
+                  <PersonName person={person} />
                 </h2>
                 <p className="text-sm text-[var(--text-muted)]">{person.jobTitle}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -147,9 +149,7 @@ export function PersonProfileModal({ person, onClose }: PersonProfileModalProps)
             </div>
 
             {loading ? (
-              <p className="py-8 text-center text-sm text-[var(--text-muted)]">
-                Loading attendance...
-              </p>
+              <LoadingState message="Loading attendance" size="sm" />
             ) : (
               <AttendanceCalendar yearMonth={yearMonth} dayMap={dayMap} today={today} />
             )}

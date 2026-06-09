@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { X, PoundSterling, CheckCircle2 } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { PersonName } from '../PersonName'
 import { Modal } from '../ui/Modal'
 import { formatGBP, formatUKDate } from '../../lib/uk'
 import type { PayrollLine } from '../../lib/types'
@@ -70,7 +71,7 @@ export function MarkPaidModal({
                 Record payment
               </h2>
               <p className="text-sm text-[var(--text-muted)]">
-                {line.employee.firstName} {line.employee.lastName} · {periodLabel}
+                <PersonName person={line.employee} /> · {periodLabel}
               </p>
             </div>
             <button

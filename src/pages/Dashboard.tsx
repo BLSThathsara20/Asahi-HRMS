@@ -8,6 +8,7 @@ import { GlassCard } from '../components/ui/GlassCard'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { EmployeeAvatar } from '../components/EmployeeAvatar'
+import { PersonName } from '../components/PersonName'
 import { DepartmentManagerModal } from '../components/dashboard/DepartmentManagerModal'
 import { useEmployees } from '../hooks/useEmployees'
 import { useAttendance } from '../hooks/useAttendance'
@@ -15,6 +16,7 @@ import { useDepartments } from '../hooks/useDepartments'
 import { usePermissions } from '../hooks/usePermissions'
 import { isSuperAdminEmployee } from '../lib/permissions'
 import { getDepartmentLabel } from '../lib/types'
+import { LoadingSkeleton, LoadingStat } from '../components/ui/Loading'
 import { formatUKTime } from '../lib/uk'
 import type { AttendanceRecord } from '../lib/types'
 
@@ -151,7 +153,7 @@ export function Dashboard() {
                       On Site Now
                     </p>
                     <p className="mt-1 text-4xl font-light text-emerald-500">
-                      {attLoading ? '—' : onSite.length}
+                      {attLoading ? <LoadingStat /> : onSite.length}
                     </p>
                   </div>
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15">
@@ -169,7 +171,7 @@ export function Dashboard() {
                       Left Today
                     </p>
                     <p className="mt-1 text-4xl font-light text-[var(--text-muted)]">
-                      {attLoading ? '—' : leftToday.length}
+                      {attLoading ? <LoadingStat /> : leftToday.length}
                     </p>
                   </div>
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-500/15">
@@ -187,7 +189,7 @@ export function Dashboard() {
                       Not In Yet
                     </p>
                     <p className="mt-1 text-4xl font-light text-amber-500">
-                      {empLoading || attLoading ? '—' : notInYet}
+                      {empLoading || attLoading ? <LoadingStat /> : notInYet}
                     </p>
                   </div>
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15">
@@ -214,7 +216,7 @@ export function Dashboard() {
                   )}
                 </div>
                 {attLoading ? (
-                  <p className="text-sm text-[var(--text-muted)]">Loading...</p>
+                  <LoadingSkeleton rows={4} />
                 ) : sortedTodayRecords.length === 0 ? (
                   <p className="text-sm text-[var(--text-muted)]">
                     No one has signed in today yet.
@@ -236,7 +238,7 @@ export function Dashboard() {
                               <EmployeeAvatar employee={record.employee} />
                               <div>
                                 <p className="text-sm font-medium text-[var(--text-primary)]">
-                                  {record.employee.firstName} {record.employee.lastName}
+                                  <PersonName person={record.employee} />
                                 </p>
                                 <p className="text-xs text-[var(--text-muted)]">
                                   {getDepartmentLabel(record.employee.department)}
@@ -289,7 +291,7 @@ export function Dashboard() {
                 </h2>
                 <p className="mb-4 text-xs text-[var(--text-muted)]">On site and left today</p>
                 {attLoading ? (
-                  <p className="text-sm text-[var(--text-muted)]">Loading...</p>
+                  <LoadingSkeleton rows={3} />
                 ) : deptTodayCounts.length === 0 ? (
                   <p className="text-sm text-[var(--text-muted)]">No attendance recorded today.</p>
                 ) : (

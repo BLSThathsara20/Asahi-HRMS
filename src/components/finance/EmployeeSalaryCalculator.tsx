@@ -7,6 +7,8 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { GlassCard } from '../ui/GlassCard'
+import { LoadingState } from '../ui/Loading'
+import { PersonName } from '../PersonName'
 import { EmployeeAvatar } from '../EmployeeAvatar'
 import { useEmployees } from '../../hooks/useEmployees'
 import { fetchAllAttendanceHistory } from '../../lib/sanity'
@@ -117,14 +119,14 @@ export function EmployeeSalaryCalculator({ yearMonth }: EmployeeSalaryCalculator
       </div>
 
       {loading ? (
-        <p className="text-sm text-[var(--text-muted)]">Loading...</p>
+        <LoadingState message="Calculating attendance" size="sm" />
       ) : selected && toDate ? (
         <div>
           <div className="mb-4 flex items-center gap-3 rounded-xl bg-white/5 p-3">
             <EmployeeAvatar employee={selected} size="md" />
             <div className="min-w-0">
               <p className="font-medium text-[var(--text-primary)]">
-                {selected.firstName} {selected.lastName}
+                <PersonName person={selected} />
               </p>
               <p className="text-xs text-[var(--text-muted)]">
                 {selected.employeeId} · {selected.jobTitle}

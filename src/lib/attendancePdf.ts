@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { assetUrl, COMPANY_NAME } from './brand'
+import { assetUrl, COMPANY_NAME, DEVELOPER_GOLD_RGB, isDeveloperEmail } from './brand'
 import { hoursFromRecord } from './payroll'
 import type { AttendanceRecord, Employee } from './types'
 import { formatUKDate, formatUKDateTime, formatUKTime } from './uk'
@@ -94,7 +94,13 @@ function drawEmployeeBlock(doc: jsPDF, employee: Employee, y: number): number {
   doc.setFontSize(11)
   doc.setTextColor(...TEXT_DARK)
   doc.setFont('helvetica', 'bold')
+  if (isDeveloperEmail(employee.email)) {
+    doc.setTextColor(...DEVELOPER_GOLD_RGB)
+  }
   doc.text(`${employee.firstName} ${employee.lastName}`, 14, y)
+  if (isDeveloperEmail(employee.email)) {
+    doc.setTextColor(...TEXT_DARK)
+  }
 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
@@ -236,6 +242,14 @@ export async function exportTeamAttendancePdf(
     bodyStyles: { fontSize: 8, textColor: TEXT_DARK },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     margin: { left: 14, right: 14 },
+    didParseCell(data) {
+      if (data.section !== 'body' || data.column.index !== 1) return
+      const record = records[data.row.index]
+      if (record && isDeveloperEmail(record.employee.email)) {
+        data.cell.styles.textColor = DEVELOPER_GOLD_RGB
+        data.cell.styles.fontStyle = 'bold'
+      }
+    },
   })
 
   const pageCount = doc.getNumberOfPages()

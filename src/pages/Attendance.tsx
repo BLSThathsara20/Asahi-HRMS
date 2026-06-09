@@ -5,8 +5,10 @@ import { Header } from '../components/layout/Header'
 import { Logo } from '../components/Logo'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
+import { LoadingState } from '../components/ui/Loading'
 import { Badge } from '../components/ui/Badge'
 import { EmployeeAvatar } from '../components/EmployeeAvatar'
+import { PersonName } from '../components/PersonName'
 import { useAttendance } from '../hooks/useAttendance'
 import { useAuth } from '../context/AuthContext'
 import { getDepartmentColor, getDepartmentLabel } from '../lib/types'
@@ -190,13 +192,7 @@ export function Attendance() {
         />
 
         {loadingMe ? (
-          <motion.p
-            animate={{ opacity: [0.4, 1, 0.4] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="text-sm text-[var(--text-muted)]"
-          >
-            Loading your profile...
-          </motion.p>
+          <LoadingState message="Loading your profile" size="lg" className="relative z-10" />
         ) : me ? (
           <motion.div
             layout
@@ -240,7 +236,7 @@ export function Attendance() {
               layout
               className="text-xl font-semibold text-[var(--text-primary)]"
             >
-              {me.firstName} {me.lastName}
+              <PersonName person={me} />
             </motion.h2>
             <p className="mt-1 text-sm text-[var(--text-muted)]">{me.jobTitle}</p>
             <Badge color={getDepartmentColor(me.department)} className="mt-2">

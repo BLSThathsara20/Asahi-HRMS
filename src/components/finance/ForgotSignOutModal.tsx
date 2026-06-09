@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { X, AlertTriangle, Clock, CheckCircle2, Calculator } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { PersonName } from '../PersonName'
 import { Modal } from '../ui/Modal'
 import { resolveForgotSignOut } from '../../lib/sanity'
 import {
@@ -127,7 +128,7 @@ export function ForgotSignOutModal({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="font-medium text-[var(--text-primary)]">
-                      {record.employee.firstName} {record.employee.lastName}
+                      <PersonName person={record.employee} />
                     </p>
                     <p className="text-xs text-[var(--text-muted)]">
                       {record.employee.employeeId} · {formatUKDate(record.date)}

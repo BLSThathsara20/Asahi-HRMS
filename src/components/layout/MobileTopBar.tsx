@@ -6,6 +6,7 @@ import { ThemeToggle } from '../ui/ThemeToggle'
 import { Badge } from '../ui/Badge'
 import { useAuth } from '../../context/AuthContext'
 import { getRoleColor, getRoleLabel } from '../../lib/auth'
+import { PersonName } from '../PersonName'
 
 export function MobileTopBar() {
   const { user, logout } = useAuth()
@@ -62,7 +63,7 @@ export function MobileTopBar() {
                           </div>
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-[var(--text-primary)]">
-                              {user.firstName} {user.lastName}
+                              <PersonName person={user} />
                             </p>
                             <Badge color={getRoleColor(user.role)} className="mt-1">
                               {getRoleLabel(user.role)}
