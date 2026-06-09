@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react'
+import { ListPagination } from '../ui/ListPagination'
+import { useListPagination } from '../../hooks/useListPagination'
 import { motion } from 'framer-motion'
 import { X, PoundSterling, History } from 'lucide-react'
 import { Button } from '../ui/Button'
@@ -43,6 +45,14 @@ export function EmployeePayModal({ employee, onClose, onSaved }: EmployeePayModa
   const history = [...(employee.payHistory ?? [])].sort((a, b) =>
     b.effectiveFrom.localeCompare(a.effectiveFrom),
   )
+
+  const {
+    visibleItems: visibleHistory,
+    hasMore: hasMoreHistory,
+    loadMore: loadMoreHistory,
+    showing: showingHistory,
+    totalCount: totalHistory,
+  } = useListPagination(history, 5)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -245,7 +255,7 @@ export function EmployeePayModal({ employee, onClose, onSaved }: EmployeePayModa
                 Pay Change History
               </div>
               <div className="space-y-2">
-                {history.map((entry, i) => (
+                {visibleHistory.map((entry, i) => (
                   <div
                     key={`${entry.effectiveFrom}-${entry.changedAt}-${i}`}
                     className="rounded-xl bg-white/5 px-3 py-2.5 text-xs"
@@ -262,6 +272,13 @@ export function EmployeePayModal({ employee, onClose, onSaved }: EmployeePayModa
                     )}
                   </div>
                 ))}
+                <ListPagination
+                  showing={showingHistory}
+                  total={totalHistory}
+                  hasMore={hasMoreHistory}
+                  onLoadMore={loadMoreHistory}
+                  className="pt-1"
+                />
               </div>
             </div>
           )}

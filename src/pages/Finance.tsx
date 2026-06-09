@@ -13,6 +13,10 @@ import {
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
 import { LoadingSkeleton } from '../components/ui/Loading'
+import { SearchField } from '../components/ui/SearchField'
+import { ListPagination } from '../components/ui/ListPagination'
+import { useListPagination } from '../hooks/useListPagination'
+import { matchesPayrollLine } from '../lib/listSearch'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { PersonName } from '../components/PersonName'
@@ -56,6 +60,10 @@ export function Finance() {
   const [markPaidLine, setMarkPaidLine] = useState<PayrollLine | null>(null)
   const [forgotRecords, setForgotRecords] = useState<AttendanceRecord[]>([])
   const [showForgotModal, setShowForgotModal] = useState(false)
+  const [payrollSearch, setPayrollSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'paid' | 'pending' | 'not_calculated' | 'not_configured'
+  >('all')
 
   const loadForgotRecords = useCallback(async () => {
     if (!can('finance.manage')) {
@@ -75,6 +83,27 @@ export function Finance() {
 
   const recordedBy = user ? `${user.firstName} ${user.lastName}` : 'Unknown'
   const periodLabel = formatUKMonth(yearMonth)
+
+  const filteredLines = useMemo(() => {
+    const q = payrollSearch.trim()
+    return lines.filter((line) => {
+      if (q && !matchesPayrollLine(line, q)) return false
+      if (statusFilter === 'all') return true
+      if (statusFilter === 'not_configured') return !line.configured
+      if (statusFilter === 'not_calculated') return line.configured && !line.entryId
+      if (statusFilter === 'paid') return line.configured && line.entryId && line.status === 'paid'
+      if (statusFilter === 'pending') return line.configured && line.entryId && line.status === 'pending'
+      return true
+    })
+  }, [lines, payrollSearch, statusFilter])
+
+  const {
+    visibleItems: visibleLines,
+    hasMore: hasMoreLines,
+    loadMore: loadMoreLines,
+    showing: showingLines,
+    totalCount: totalLines,
+  } = useListPagination(filteredLines, 10, [payrollSearch, statusFilter, yearMonth])
 
   const stats = useMemo(() => {
     const configured = lines.filter((l) => l.configured)
@@ -305,17 +334,48 @@ export function Finance() {
       )}
 
       <GlassCard strong className="p-4">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-          Salary Breakdown
-        </h2>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+            Salary Breakdown
+          </h2>
+          {!loading && lines.length > 0 && (
+            <p className="text-xs text-[var(--text-muted)]">
+              {filteredLines.length} of {lines.length} shown
+            </p>
+          )}
+        </div>
+
+        {!loading && lines.length > 0 && (
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <SearchField
+              className="flex-1"
+              value={payrollSearch}
+              onChange={setPayrollSearch}
+              placeholder="Search by name or staff ID..."
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-asahi-blue/50"
+            >
+              <option value="all">All statuses</option>
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="not_calculated">Not calculated</option>
+              <option value="not_configured">Pay not configured</option>
+            </select>
+          </div>
+        )}
 
         {loading ? (
           <LoadingSkeleton rows={4} />
         ) : lines.length === 0 ? (
           <p className="text-sm text-[var(--text-muted)]">No people found.</p>
+        ) : filteredLines.length === 0 ? (
+          <p className="text-sm text-[var(--text-muted)]">No payroll lines match your search.</p>
         ) : (
           <div className="space-y-3">
-            {lines.map((line) => (
+            {visibleLines.map((line) => (
               <motion.div
                 key={line.employee._id}
                 layout
@@ -406,6 +466,13 @@ export function Finance() {
                 )}
               </motion.div>
             ))}
+            <ListPagination
+              showing={showingLines}
+              total={totalLines}
+              hasMore={hasMoreLines}
+              onLoadMore={loadMoreLines}
+              className="pt-2"
+            />
           </div>
         )}
       </GlassCard>

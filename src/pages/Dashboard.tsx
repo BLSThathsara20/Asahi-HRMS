@@ -6,7 +6,6 @@ import { enGB } from 'date-fns/locale'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Badge } from '../components/ui/Badge'
-import { Button } from '../components/ui/Button'
 import { EmployeeAvatar } from '../components/EmployeeAvatar'
 import { PersonName } from '../components/PersonName'
 import { DepartmentManagerModal } from '../components/dashboard/DepartmentManagerModal'
@@ -17,10 +16,12 @@ import { usePermissions } from '../hooks/usePermissions'
 import { isSuperAdminEmployee } from '../lib/permissions'
 import { getDepartmentLabel } from '../lib/types'
 import { LoadingSkeleton, LoadingStat } from '../components/ui/Loading'
+import { SearchField } from '../components/ui/SearchField'
+import { ListPagination } from '../components/ui/ListPagination'
+import { useListPagination, PAGE_SIZE_SM } from '../hooks/useListPagination'
+import { matchesAttendanceRecord } from '../lib/listSearch'
 import { formatUKTime } from '../lib/uk'
 import type { AttendanceRecord } from '../lib/types'
-
-const INITIAL_ATTENDANCE_VISIBLE = 4
 
 const container = {
   hidden: { opacity: 0 },
@@ -55,7 +56,7 @@ export function Dashboard() {
   const { todayRecords, loading: attLoading } = useAttendance()
   const { departments, reload: reloadDepartments } = useDepartments()
   const [showDeptModal, setShowDeptModal] = useState(false)
-  const [attendanceVisible, setAttendanceVisible] = useState(INITIAL_ATTENDANCE_VISIBLE)
+  const [attendanceSearch, setAttendanceSearch] = useState('')
 
   const todayLabel = format(new Date(), 'EEEE, d MMMM yyyy', { locale: enGB })
 
@@ -109,6 +110,20 @@ export function Dashboard() {
 
   const maxDeptToday = Math.max(...deptTodayCounts.map((d) => d.onSite + d.left), 1)
 
+  const filteredTodayRecords = useMemo(() => {
+    const q = attendanceSearch.trim()
+    if (!q) return sortedTodayRecords
+    return sortedTodayRecords.filter((r) => matchesAttendanceRecord(r, q))
+  }, [sortedTodayRecords, attendanceSearch])
+
+  const {
+    visibleItems: visibleRecords,
+    hasMore: hasMoreAttendance,
+    loadMore: loadMoreAttendance,
+    showing: showingAttendance,
+    totalCount: totalAttendance,
+  } = useListPagination(filteredTodayRecords, PAGE_SIZE_SM, [attendanceSearch])
+
   const handleRefresh = () => {
     reloadEmployees()
     reloadDepartments()
@@ -118,9 +133,6 @@ export function Dashboard() {
   const showAttendance = can('dashboard.attendance')
   const showDeptChart = can('dashboard.departments')
   const showDeptManage = can('departments.manage')
-
-  const visibleRecords = sortedTodayRecords.slice(0, attendanceVisible)
-  const hasMoreAttendance = sortedTodayRecords.length > attendanceVisible
 
   return (
     <div>
@@ -223,6 +235,18 @@ export function Dashboard() {
                   </p>
                 ) : (
                   <>
+                    <SearchField
+                      className="mb-4"
+                      value={attendanceSearch}
+                      onChange={setAttendanceSearch}
+                      placeholder="Search today's attendance..."
+                    />
+                    {filteredTodayRecords.length === 0 ? (
+                      <p className="text-sm text-[var(--text-muted)]">
+                        No attendance records match your search.
+                      </p>
+                    ) : (
+                    <>
                     <div className="space-y-3">
                       {visibleRecords.map((record) => {
                         const status = recordStatusBadge(record)
@@ -262,20 +286,13 @@ export function Dashboard() {
                       })}
                     </div>
 
-                    {hasMoreAttendance && (
-                      <div className="mt-4 text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setAttendanceVisible((count) =>
-                              Math.min(count + 4, sortedTodayRecords.length),
-                            )
-                          }
-                        >
-                          Load more ({sortedTodayRecords.length - attendanceVisible} remaining)
-                        </Button>
-                      </div>
+                    <ListPagination
+                      showing={showingAttendance}
+                      total={totalAttendance}
+                      hasMore={hasMoreAttendance}
+                      onLoadMore={loadMoreAttendance}
+                    />
+                    </>
                     )}
                   </>
                 )}

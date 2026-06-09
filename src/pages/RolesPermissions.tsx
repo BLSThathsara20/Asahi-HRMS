@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Shield, Users, CheckCircle2, Settings2, RotateCcw, Plus, Trash2 } from 'lucide-react'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
 import { LoadingSkeleton } from '../components/ui/Loading'
+import { SearchField } from '../components/ui/SearchField'
+import { ListPagination } from '../components/ui/ListPagination'
+import { useListPagination } from '../hooks/useListPagination'
+import { matchesAuthUser } from '../lib/listSearch'
 import { PersonName } from '../components/PersonName'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
@@ -54,8 +58,23 @@ export function RolesPermissions() {
   const [users, setUsers] = useState<AuthUser[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [editingUser, setEditingUser] = useState<AuthUser | null>(null)
+  const [userSearch, setUserSearch] = useState('')
 
   const selectedRole = roles.find((r) => r._id === selectedRoleId) ?? roles[0]
+
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim()
+    if (!q) return users
+    return users.filter((u) => matchesAuthUser(u, q))
+  }, [users, userSearch])
+
+  const {
+    visibleItems: visibleUsers,
+    hasMore: hasMoreUsers,
+    loadMore: loadMoreUsers,
+    showing: showingUsers,
+    totalCount: totalUsers,
+  } = useListPagination(filteredUsers, 10, [userSearch])
 
   useEffect(() => {
     if (roles.length && !selectedRoleId) {
@@ -308,8 +327,18 @@ export function RolesPermissions() {
           ) : users.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)]">No users found.</p>
           ) : (
+            <>
+              <SearchField
+                className="mb-4"
+                value={userSearch}
+                onChange={setUserSearch}
+                placeholder="Search users by name or email..."
+              />
+              {filteredUsers.length === 0 ? (
+                <p className="text-sm text-[var(--text-muted)]">No users match your search.</p>
+              ) : (
             <div className="space-y-3">
-              {users.map((u) => {
+              {visibleUsers.map((u) => {
                 const perms = resolvePermissions(u, roleConfigs)
                 const hasCustom = Boolean(u.permissions && u.permissions.length > 0)
                 const canEdit = can('users.manage_permissions') && canEditPermissionsFor(u)
@@ -342,7 +371,16 @@ export function RolesPermissions() {
                   </motion.div>
                 )
               })}
+              <ListPagination
+                showing={showingUsers}
+                total={totalUsers}
+                hasMore={hasMoreUsers}
+                onLoadMore={loadMoreUsers}
+                className="pt-2"
+              />
             </div>
+              )}
+            </>
           )}
         </GlassCard>
       )}

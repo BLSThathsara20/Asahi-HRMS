@@ -1,9 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Search, PoundSterling, History, Pencil, Trash2, UserRound } from 'lucide-react'
+import { PoundSterling, History, Pencil, Trash2, UserRound } from 'lucide-react'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
 import { LoadingSkeleton } from '../components/ui/Loading'
+import { SearchField } from '../components/ui/SearchField'
+import { ListPagination } from '../components/ui/ListPagination'
+import { useListPagination } from '../hooks/useListPagination'
+import { matchesEmployee } from '../lib/listSearch'
 import { Badge } from '../components/ui/Badge'
 import { EmployeeAvatar } from '../components/EmployeeAvatar'
 import { PersonName } from '../components/PersonName'
@@ -38,17 +42,20 @@ export function Employees() {
   const [viewPerson, setViewPerson] = useState<Employee | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const filtered = employees.filter((e) => {
-    const q = search.toLowerCase()
-    const matchesSearch =
-      e.firstName.toLowerCase().includes(q) ||
-      e.lastName.toLowerCase().includes(q) ||
-      e.email.toLowerCase().includes(q) ||
-      e.employeeId.toLowerCase().includes(q)
-    const matchesDept =
-      deptFilter === 'all' || e.department?._id === deptFilter
-    return matchesSearch && matchesDept
-  })
+  const filtered = useMemo(() => {
+    const q = search.trim()
+    return employees.filter((e) => {
+      const matchesSearch = !q || matchesEmployee(e, q)
+      const matchesDept = deptFilter === 'all' || e.department?._id === deptFilter
+      return matchesSearch && matchesDept
+    })
+  }, [employees, search, deptFilter])
+
+  const { visibleItems, hasMore, loadMore, showing, totalCount } = useListPagination(
+    filtered,
+    12,
+    [search, deptFilter],
+  )
 
   return (
     <div>
@@ -59,19 +66,12 @@ export function Employees() {
 
       <GlassCard strong className="p-4 mb-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-            />
-            <input
-              type="text"
-              placeholder="Search people..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-white/20 bg-white/10 py-2.5 pl-9 pr-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-asahi-blue/50"
-            />
-          </div>
+          <SearchField
+            className="flex-1"
+            value={search}
+            onChange={setSearch}
+            placeholder="Search people..."
+          />
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setDeptFilter('all')}
@@ -109,7 +109,7 @@ export function Employees() {
         <LoadingSkeleton rows={6} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 [&>div]:h-32" />
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((employee, i) => {
+          {visibleItems.map((employee, i) => {
             const history = [...(employee.payHistory ?? [])].sort((a, b) =>
               b.effectiveFrom.localeCompare(a.effectiveFrom),
             )
@@ -250,6 +250,15 @@ export function Employees() {
             )
           })}
         </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <ListPagination
+          showing={showing}
+          total={totalCount}
+          hasMore={hasMore}
+          onLoadMore={loadMore}
+        />
       )}
 
       {!loading && filtered.length === 0 && (

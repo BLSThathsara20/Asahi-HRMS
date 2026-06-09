@@ -4,6 +4,7 @@ import { enGB } from 'date-fns/locale'
 import { ChevronDown, FileDown, List, Search, SlidersHorizontal } from 'lucide-react'
 import { GlassCard } from '../ui/GlassCard'
 import { LoadingSkeleton } from '../ui/Loading'
+import { ListPagination } from '../ui/ListPagination'
 import { PersonName } from '../PersonName'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -466,17 +467,13 @@ export function AttendanceHistoryPanel({
               </section>
             ))}
 
-            {hasMore && (
-              <div className="pt-2 text-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-                >
-                  Show more ({filtered.length - visibleCount} remaining)
-                </Button>
-              </div>
-            )}
+            <ListPagination
+              showing={visibleRecords.length}
+              total={filtered.length}
+              hasMore={hasMore}
+              onLoadMore={() => setVisibleCount((n) => n + PAGE_SIZE)}
+              className="pt-2"
+            />
           </div>
         )}
       </div>

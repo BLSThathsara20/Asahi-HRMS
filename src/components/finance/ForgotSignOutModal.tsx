@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import { X, AlertTriangle, Clock, CheckCircle2, Calculator } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { SearchField } from '../ui/SearchField'
+import { ListPagination } from '../ui/ListPagination'
+import { useListPagination } from '../../hooks/useListPagination'
+import { matchesAttendanceRecord } from '../../lib/listSearch'
 import { PersonName } from '../PersonName'
 import { Modal } from '../ui/Modal'
 import { resolveForgotSignOut } from '../../lib/sanity'
@@ -40,6 +44,7 @@ export function ForgotSignOutModal({
   )
   const [savingId, setSavingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   const sorted = useMemo(
     () =>
@@ -50,6 +55,20 @@ export function ForgotSignOutModal({
       ),
     [records],
   )
+
+  const filtered = useMemo(() => {
+    const q = search.trim()
+    if (!q) return sorted
+    return sorted.filter((r) => matchesAttendanceRecord(r, q))
+  }, [sorted, search])
+
+  const {
+    visibleItems: visibleRecords,
+    hasMore,
+    loadMore,
+    showing,
+    totalCount,
+  } = useListPagination(filtered, 8, [search])
 
   const handleFix = async (record: AttendanceRecord) => {
     const timeValue = times[record._id]
@@ -119,8 +138,22 @@ export function ForgotSignOutModal({
             </div>
           )}
 
+          {records.length > 3 && (
+            <SearchField
+              className="mb-4"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search by name or staff ID..."
+            />
+          )}
+
+          {filtered.length === 0 ? (
+            <p className="py-6 text-center text-sm text-[var(--text-muted)]">
+              No records match your search.
+            </p>
+          ) : (
           <div className="space-y-3">
-            {sorted.map((record) => (
+            {visibleRecords.map((record) => (
               <div
                 key={record._id}
                 className="rounded-xl bg-white/10 px-4 py-3"
@@ -160,7 +193,15 @@ export function ForgotSignOutModal({
                 </div>
               </div>
             ))}
+            <ListPagination
+              showing={showing}
+              total={totalCount}
+              hasMore={hasMore}
+              onLoadMore={loadMore}
+              className="pt-2"
+            />
           </div>
+          )}
 
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button variant="ghost" onClick={onClose}>
