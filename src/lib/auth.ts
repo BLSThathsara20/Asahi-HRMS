@@ -1,6 +1,13 @@
 import type { AuthUser, RoleConfig } from './types'
 
 const SESSION_KEY = 'asahi-session'
+/** Keep users signed in for one year after login (or last session refresh). */
+const SESSION_TTL_MS = 365 * 24 * 60 * 60 * 1000
+
+interface StoredSession {
+  user: AuthUser
+  expiresAt: number
+}
 
 export function getRoleLabel(role: RoleConfig | string | null | undefined): string {
   if (!role) return 'No role'
@@ -23,10 +30,6 @@ export function getAssignableRoles(actor: AuthUser, allRoles: RoleConfig[]): Rol
   return allRoles.filter((r) => r.rank < actorRank && r.slug !== 'super_admin')
 }
 
-export function saveSession(user: AuthUser): void {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user))
-}
-
 function normalizeRoleSlug(
   role: AuthUser['role'],
   roleSlug?: string,
@@ -37,14 +40,66 @@ function normalizeRoleSlug(
   return 'manager'
 }
 
+function normalizeUser(user: AuthUser): AuthUser {
+  return {
+    ...user,
+    roleSlug: normalizeRoleSlug(user.role, user.roleSlug),
+  }
+}
+
+function isAuthUser(value: unknown): value is AuthUser {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    '_id' in value &&
+    'email' in value &&
+    typeof (value as AuthUser).email === 'string'
+  )
+}
+
+function isStoredSession(value: unknown): value is StoredSession {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'expiresAt' in value &&
+    'user' in value &&
+    isAuthUser((value as StoredSession).user)
+  )
+}
+
+export function saveSession(user: AuthUser): void {
+  const payload: StoredSession = {
+    user: normalizeUser(user),
+    expiresAt: Date.now() + SESSION_TTL_MS,
+  }
+  localStorage.setItem(SESSION_KEY, JSON.stringify(payload))
+}
+
 export function loadSession(): AuthUser | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as AuthUser & { role?: AuthUser['role'] | string }
-    parsed.roleSlug = normalizeRoleSlug(parsed.role, parsed.roleSlug)
-    return parsed
+
+    const parsed: unknown = JSON.parse(raw)
+
+    if (isStoredSession(parsed)) {
+      if (Date.now() > parsed.expiresAt) {
+        clearSession()
+        return null
+      }
+      return normalizeUser(parsed.user)
+    }
+
+    if (isAuthUser(parsed)) {
+      const user = normalizeUser(parsed)
+      saveSession(user)
+      return user
+    }
+
+    clearSession()
+    return null
   } catch {
+    clearSession()
     return null
   }
 }
