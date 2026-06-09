@@ -6,7 +6,7 @@ import {
   User,
   TrendingUp,
 } from 'lucide-react'
-import { GlassCard } from '../ui/GlassCard'
+import { Accordion } from '../ui/Accordion'
 import { LoadingState } from '../ui/Loading'
 import { PersonName } from '../PersonName'
 import { EmployeeAvatar } from '../EmployeeAvatar'
@@ -83,15 +83,13 @@ export function EmployeeSalaryCalculator({ yearMonth }: EmployeeSalaryCalculator
   const loading = employeesLoading || loadingAttendance
 
   return (
-    <GlassCard strong className="mb-4 p-4">
-      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-        Employee salary calculator
-      </h2>
-      <p className="mb-4 text-xs text-[var(--text-muted)]">
-        Select a person to see days attended and pay earned
-        {isCurrentMonth ? ' so far this month' : ` for ${month}`}.
-      </p>
-
+    <Accordion
+      title="Employee salary calculator"
+      description={`Select a person to see days attended and pay earned${
+        isCurrentMonth ? ' so far this month' : ` for ${month}`
+      }.`}
+      defaultOpen={false}
+    >
       <label className="mb-1.5 block text-xs font-medium text-[var(--text-muted)]">
         Select person
       </label>
@@ -209,7 +207,7 @@ export function EmployeeSalaryCalculator({ yearMonth }: EmployeeSalaryCalculator
           )}
         </div>
       ) : null}
-    </GlassCard>
+    </Accordion>
   )
 }
 
