@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Users, LogIn, LogOut, Building2, Settings2 } from 'lucide-react'
+import { LogIn, LogOut, Settings2, UserX } from 'lucide-react'
+import { format } from 'date-fns'
+import { enGB } from 'date-fns/locale'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Badge } from '../components/ui/Badge'
@@ -14,6 +16,7 @@ import { usePermissions } from '../hooks/usePermissions'
 import { getDepartmentLabel } from '../lib/types'
 import { AttendanceLocationDisplay } from '../components/attendance/AttendanceLocationDisplay'
 import { formatUKTime } from '../lib/uk'
+import type { AttendanceRecord } from '../lib/types'
 
 const INITIAL_ATTENDANCE_VISIBLE = 4
 
@@ -27,6 +30,23 @@ const item = {
   show: { opacity: 1, y: 0 },
 }
 
+function dedupeTodayRecords(records: AttendanceRecord[]): AttendanceRecord[] {
+  const byEmployee = new Map<string, AttendanceRecord>()
+  for (const record of records) {
+    const existing = byEmployee.get(record.employee._id)
+    if (!existing || record.signInTime > existing.signInTime) {
+      byEmployee.set(record.employee._id, record)
+    }
+  }
+  return [...byEmployee.values()]
+}
+
+function recordStatusBadge(record: AttendanceRecord): { label: string; color: string } {
+  if (record.status === 'signed_in') return { label: 'On Site', color: '#059669' }
+  if (record.status === 'signed_out') return { label: 'Left', color: '#64748b' }
+  return { label: 'Needs review', color: '#d97706' }
+}
+
 export function Dashboard() {
   const { can } = usePermissions()
   const { employees, loading: empLoading, reload: reloadEmployees } = useEmployees()
@@ -35,15 +55,44 @@ export function Dashboard() {
   const [showDeptModal, setShowDeptModal] = useState(false)
   const [attendanceVisible, setAttendanceVisible] = useState(INITIAL_ATTENDANCE_VISIBLE)
 
-  const signedIn = todayRecords.filter((r) => r.status === 'signed_in').length
-  const signedOut = todayRecords.filter((r) => r.status === 'signed_out').length
+  const todayLabel = format(new Date(), 'EEEE, d MMMM yyyy', { locale: enGB })
 
-  const deptCounts = departments.map((dept) => ({
-    ...dept,
-    count: employees.filter((e) => e.department?._id === dept._id).length,
-  }))
+  const todayAttendance = useMemo(() => dedupeTodayRecords(todayRecords), [todayRecords])
 
-  const maxDept = Math.max(...deptCounts.map((d) => d.count), 1)
+  const onSite = useMemo(
+    () => todayAttendance.filter((r) => r.status === 'signed_in'),
+    [todayAttendance],
+  )
+  const leftToday = useMemo(
+    () => todayAttendance.filter((r) => r.status === 'signed_out'),
+    [todayAttendance],
+  )
+  const notInYet = Math.max(employees.length - todayAttendance.length, 0)
+
+  const sortedTodayRecords = useMemo(
+    () => [
+      ...[...onSite].sort(
+        (a, b) => new Date(b.signInTime).getTime() - new Date(a.signInTime).getTime(),
+      ),
+      ...[...leftToday].sort((a, b) => {
+        const aOut = a.signOutTime ?? a.signInTime
+        const bOut = b.signOutTime ?? b.signInTime
+        return new Date(bOut).getTime() - new Date(aOut).getTime()
+      }),
+    ],
+    [onSite, leftToday],
+  )
+
+  const deptTodayCounts = useMemo(() => {
+    const counts = departments.map((dept) => ({
+      ...dept,
+      onSite: onSite.filter((r) => r.employee.department?._id === dept._id).length,
+      left: leftToday.filter((r) => r.employee.department?._id === dept._id).length,
+    }))
+    return counts.filter((d) => d.onSite > 0 || d.left > 0)
+  }, [departments, onSite, leftToday])
+
+  const maxDeptToday = Math.max(...deptTodayCounts.map((d) => d.onSite + d.left), 1)
 
   const handleRefresh = () => {
     reloadEmployees()
@@ -55,14 +104,14 @@ export function Dashboard() {
   const showDeptChart = can('dashboard.departments')
   const showDeptManage = can('departments.manage')
 
-  const visibleRecords = todayRecords.slice(0, attendanceVisible)
-  const hasMoreAttendance = todayRecords.length > attendanceVisible
+  const visibleRecords = sortedTodayRecords.slice(0, attendanceVisible)
+  const hasMoreAttendance = sortedTodayRecords.length > attendanceVisible
 
   return (
     <div>
       <Header
         title="Dashboard"
-        subtitle="Asahi Motors London"
+        subtitle={todayLabel}
         actions={
           showDeptManage ? (
             <button
@@ -80,34 +129,16 @@ export function Dashboard() {
 
       <motion.div variants={container} initial="hidden" animate="show" className="space-y-4">
         {showStats && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <motion.div variants={item}>
               <GlassCard className="p-5" hover>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
-                      Total People
-                    </p>
-                    <p className="mt-1 text-4xl font-light text-[var(--text-primary)]">
-                      {empLoading ? '—' : employees.length}
-                    </p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-asahi-blue/15">
-                    <Users size={22} className="text-asahi-blue" />
-                  </div>
-                </div>
-              </GlassCard>
-            </motion.div>
-
-            <motion.div variants={item}>
-              <GlassCard className="p-5" hover>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
-                      Signed In
+                      On Site Now
                     </p>
                     <p className="mt-1 text-4xl font-light text-emerald-500">
-                      {attLoading ? '—' : signedIn}
+                      {attLoading ? '—' : onSite.length}
                     </p>
                   </div>
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15">
@@ -122,10 +153,10 @@ export function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
-                      Signed Out
+                      Left Today
                     </p>
                     <p className="mt-1 text-4xl font-light text-[var(--text-muted)]">
-                      {attLoading ? '—' : signedOut}
+                      {attLoading ? '—' : leftToday.length}
                     </p>
                   </div>
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-500/15">
@@ -140,14 +171,14 @@ export function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
-                      Departments
+                      Not In Yet
                     </p>
-                    <p className="mt-1 text-4xl font-light text-[var(--text-primary)]">
-                      {departments.length}
+                    <p className="mt-1 text-4xl font-light text-amber-500">
+                      {empLoading || attLoading ? '—' : notInYet}
                     </p>
                   </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/15">
-                    <Building2 size={22} className="text-purple-500" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15">
+                    <UserX size={22} className="text-amber-500" />
                   </div>
                 </div>
               </GlassCard>
@@ -159,54 +190,68 @@ export function Dashboard() {
           {showAttendance && (
             <motion.div variants={item} className={showDeptChart ? 'lg:col-span-2' : 'lg:col-span-3'}>
               <GlassCard strong className="p-6">
-                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Today's Attendance
-                </h2>
+                <div className="mb-4 flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                    Today&apos;s Attendance
+                  </h2>
+                  {!attLoading && todayAttendance.length > 0 && (
+                    <span className="text-xs text-[var(--text-muted)]">
+                      {onSite.length} on site · {leftToday.length} left
+                    </span>
+                  )}
+                </div>
                 {attLoading ? (
                   <p className="text-sm text-[var(--text-muted)]">Loading...</p>
-                ) : todayRecords.length === 0 ? (
-                  <p className="text-sm text-[var(--text-muted)]">No attendance records today.</p>
+                ) : sortedTodayRecords.length === 0 ? (
+                  <p className="text-sm text-[var(--text-muted)]">
+                    No one has signed in today yet.
+                  </p>
                 ) : (
                   <>
                     <div className="space-y-3">
-                      {visibleRecords.map((record) => (
-                        <motion.div
-                          key={record._id}
-                          layout
-                          className="flex items-center justify-between rounded-xl bg-white/10 px-4 py-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <EmployeeAvatar employee={record.employee} />
-                            <div>
-                              <p className="text-sm font-medium text-[var(--text-primary)]">
-                                {record.employee.firstName} {record.employee.lastName}
-                              </p>
-                              <p className="text-xs text-[var(--text-muted)]">
-                                {getDepartmentLabel(record.employee.department)} · In{' '}
-                                {formatUKTime(record.signInTime)}
-                                {record.signOutTime && ` · Out ${formatUKTime(record.signOutTime)}`}
-                              </p>
-                              <AttendanceLocationDisplay
-                                record={record}
-                                compact
-                                adminOnly={false}
-                              />
-                            </div>
-                          </div>
-                          <Badge
-                            color={record.status === 'signed_in' ? '#059669' : '#64748b'}
+                      {visibleRecords.map((record) => {
+                        const status = recordStatusBadge(record)
+                        const isOnSite = record.status === 'signed_in'
+
+                        return (
+                          <motion.div
+                            key={record._id}
+                            layout
+                            className="flex items-center justify-between rounded-xl bg-white/10 px-4 py-3"
                           >
-                            <span
-                              className="inline-block h-1.5 w-1.5 rounded-full"
-                              style={{
-                                backgroundColor:
-                                  record.status === 'signed_in' ? '#059669' : '#64748b',
-                              }}
-                            />
-                            {record.status === 'signed_in' ? 'On Site' : 'Left'}
-                          </Badge>
-                        </motion.div>
-                      ))}
+                            <div className="flex items-center gap-3">
+                              <EmployeeAvatar employee={record.employee} />
+                              <div>
+                                <p className="text-sm font-medium text-[var(--text-primary)]">
+                                  {record.employee.firstName} {record.employee.lastName}
+                                </p>
+                                <p className="text-xs text-[var(--text-muted)]">
+                                  {getDepartmentLabel(record.employee.department)}
+                                  {isOnSite
+                                    ? ` · In ${formatUKTime(record.signInTime)}`
+                                    : record.signOutTime
+                                      ? ` · ${formatUKTime(record.signInTime)} – ${formatUKTime(record.signOutTime)}`
+                                      : ` · In ${formatUKTime(record.signInTime)}`}
+                                </p>
+                                {isOnSite && (
+                                  <AttendanceLocationDisplay
+                                    record={record}
+                                    compact
+                                    adminOnly={false}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                            <Badge color={status.color}>
+                              <span
+                                className="inline-block h-1.5 w-1.5 rounded-full"
+                                style={{ backgroundColor: status.color }}
+                              />
+                              {status.label}
+                            </Badge>
+                          </motion.div>
+                        )
+                      })}
                     </div>
 
                     {hasMoreAttendance && (
@@ -216,11 +261,11 @@ export function Dashboard() {
                           size="sm"
                           onClick={() =>
                             setAttendanceVisible((count) =>
-                              Math.min(count + 4, todayRecords.length),
+                              Math.min(count + 4, sortedTodayRecords.length),
                             )
                           }
                         >
-                          Load more ({todayRecords.length - attendanceVisible} remaining)
+                          Load more ({sortedTodayRecords.length - attendanceVisible} remaining)
                         </Button>
                       </div>
                     )}
@@ -233,30 +278,46 @@ export function Dashboard() {
           {showDeptChart && (
             <motion.div variants={item}>
               <GlassCard strong className="p-6">
-                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  By Department
+                <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                  Today by Department
                 </h2>
-                {deptCounts.length === 0 ? (
-                  <p className="text-sm text-[var(--text-muted)]">No departments yet.</p>
+                <p className="mb-4 text-xs text-[var(--text-muted)]">On site and left today</p>
+                {attLoading ? (
+                  <p className="text-sm text-[var(--text-muted)]">Loading...</p>
+                ) : deptTodayCounts.length === 0 ? (
+                  <p className="text-sm text-[var(--text-muted)]">No attendance recorded today.</p>
                 ) : (
                   <div className="space-y-3">
-                    {deptCounts.map((dept) => (
-                      <div key={dept._id}>
-                        <div className="mb-1 flex justify-between text-xs">
-                          <span className="text-[var(--text-secondary)]">{dept.name}</span>
-                          <span className="font-medium text-[var(--text-primary)]">{dept.count}</span>
+                    {deptTodayCounts.map((dept) => {
+                      const total = dept.onSite + dept.left
+                      return (
+                        <div key={dept._id}>
+                          <div className="mb-1 flex justify-between text-xs">
+                            <span className="text-[var(--text-secondary)]">{dept.name}</span>
+                            <span className="font-medium text-[var(--text-primary)]">
+                              {dept.onSite > 0 && (
+                                <span className="text-emerald-500">{dept.onSite} on site</span>
+                              )}
+                              {dept.onSite > 0 && dept.left > 0 && (
+                                <span className="text-[var(--text-muted)]"> · </span>
+                              )}
+                              {dept.left > 0 && (
+                                <span className="text-[var(--text-muted)]">{dept.left} left</span>
+                              )}
+                            </span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${(total / maxDeptToday) * 100}%` }}
+                              transition={{ duration: 0.8, ease: 'easeOut' }}
+                              className="h-full rounded-full"
+                              style={{ backgroundColor: dept.color }}
+                            />
+                          </div>
                         </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${(dept.count / maxDept) * 100}%` }}
-                            transition={{ duration: 0.8, ease: 'easeOut' }}
-                            className="h-full rounded-full"
-                            style={{ backgroundColor: dept.color }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </GlassCard>
