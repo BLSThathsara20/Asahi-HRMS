@@ -46,3 +46,9 @@ export function getNavItems(can: (p: Permission) => boolean): NavItem[] {
     icon: NAV_ICONS[item.to] ?? LayoutDashboard,
   }))
 }
+
+/** True when the user only has access to Sign In / Out (single nav item). */
+export function isAttendanceOnlyNav(can: (p: Permission) => boolean): boolean {
+  const items = getNavItems(can)
+  return items.length === 1 && items[0].to === '/attendance'
+}

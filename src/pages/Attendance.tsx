@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LogIn, LogOut, CheckCircle2, Clock, MapPin, Sparkles } from 'lucide-react'
+import { LogIn, LogOut, CheckCircle2, Clock, MapPin, Sparkles, CalendarDays } from 'lucide-react'
 import { Header } from '../components/layout/Header'
+import { Logo } from '../components/Logo'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
@@ -14,19 +15,25 @@ import { PermissionGate } from '../components/auth/ProtectedRoute'
 import { AttendanceExportPanel } from '../components/attendance/AttendanceExportPanel'
 import { GoogleSheetsStatus } from '../components/attendance/GoogleSheetsStatus'
 import { AttendanceLocationDisplay } from '../components/attendance/AttendanceLocationDisplay'
+import { MyAttendanceCalendarModal } from '../components/attendance/MyAttendanceCalendarModal'
 import { captureCurrentLocation, toAttendanceLocation } from '../lib/geolocation'
 import { fetchEmployeeById } from '../lib/sanity'
 import { formatUKTime } from '../lib/uk'
+import { useOfficeHours } from '../hooks/useOfficeHours'
+import { useNavLayout } from '../hooks/useNavLayout'
 import type { Employee } from '../lib/types'
 
 export function Attendance() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const { can } = usePermissions()
+  const { attendanceOnly } = useNavLayout()
   const { todayRecords, actionLoading, error, signIn, signOut } = useAttendance()
+  const office = useOfficeHours()
   const [me, setMe] = useState<Employee | null>(null)
   const [loadingMe, setLoadingMe] = useState(true)
   const [success, setSuccess] = useState<string | null>(null)
   const [justAction, setJustAction] = useState<'in' | 'out' | null>(null)
+  const [showCalendar, setShowCalendar] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -81,6 +88,32 @@ export function Attendance() {
 
   return (
     <div>
+      {attendanceOnly && (
+        <div className="mb-6 hidden items-center justify-between lg:flex">
+          <Logo />
+          <div className="flex items-center gap-2">
+            {me && (
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowCalendar(true)}
+                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[var(--text-secondary)] transition-colors hover:bg-white/10 hover:text-asahi-blue cursor-pointer border-0 bg-transparent"
+                aria-label="View my attendance calendar"
+              >
+                <CalendarDays size={16} />
+                My calendar
+              </motion.button>
+            )}
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[var(--text-secondary)] transition-colors hover:bg-white/10 hover:text-red-400 cursor-pointer border-0 bg-transparent"
+            >
+              <LogOut size={16} />
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+
       <Header
         title="Sign In / Out"
         subtitle="Tap below to clock yourself in or out"
@@ -121,18 +154,28 @@ export function Attendance() {
         strong
         className="relative mx-auto flex min-h-[420px] max-w-md flex-col items-center justify-center overflow-hidden p-8 sm:min-h-[480px]"
       >
+        {me && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.92 }}
+            onClick={() => setShowCalendar(true)}
+            className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-asahi-blue shadow-sm backdrop-blur-sm transition-colors hover:bg-asahi-blue/15 cursor-pointer border-0"
+            aria-label="View my attendance calendar"
+          >
+            <CalendarDays size={22} />
+          </motion.button>
+        )}
+
         {/* Ambient glow */}
         <motion.div
           animate={{
-            opacity: isSignedIn ? 0.35 : 0.12,
-            scale: isSignedIn ? 1.15 : 1,
+            opacity: isSignedIn ? 0.4 : office.phase === 'open' ? 0.28 : 0.18,
+            scale: isSignedIn ? 1.12 : 1,
           }}
           transition={{ duration: 0.8 }}
-          className={`pointer-events-none absolute inset-0 ${
-            isSignedIn
-              ? 'bg-[radial-gradient(circle_at_50%_40%,rgba(5,150,105,0.25),transparent_65%)]'
-              : 'bg-[radial-gradient(circle_at_50%_40%,rgba(26,111,212,0.2),transparent_65%)]'
-          }`}
+          className={`pointer-events-none absolute inset-0 ${office.glowGradient}`}
         />
 
         {loadingMe ? (
@@ -152,7 +195,7 @@ export function Attendance() {
             <div className="relative mb-6">
               {isSignedIn && (
                 <motion.span
-                  className="absolute inset-0 -m-3 rounded-full border-2 border-emerald-500/60"
+                  className={`absolute inset-0 -m-3 rounded-full border-2 ${office.ringColor}`}
                   animate={{ scale: [1, 1.12, 1], opacity: [0.6, 0.2, 0.6] }}
                   transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
                 />
@@ -196,19 +239,16 @@ export function Attendance() {
             <motion.div
               layout
               className="mt-6 flex items-center gap-2 rounded-full px-4 py-2 text-sm"
-              animate={{
-                backgroundColor: isSignedIn
-                  ? 'rgba(5, 150, 105, 0.15)'
-                  : 'rgba(100, 116, 139, 0.12)',
-              }}
+              animate={{ backgroundColor: office.statusPillBg }}
+              transition={{ duration: 0.6 }}
             >
               <motion.span
                 animate={{ scale: isSignedIn ? [1, 1.2, 1] : 1 }}
                 transition={{ duration: 1.5, repeat: isSignedIn ? Infinity : 0 }}
               >
-                <Clock size={14} className={isSignedIn ? 'text-emerald-500' : 'text-[var(--text-muted)]'} />
+                <Clock size={14} className={office.statusIconColor} />
               </motion.span>
-              <span className={isSignedIn ? 'font-medium text-emerald-600 dark:text-emerald-400' : 'text-[var(--text-muted)]'}>
+              <span className={`font-medium ${office.statusTextColor}`}>
                 {isSignedIn && myStatus
                   ? `On site since ${formatUKTime(myStatus.signInTime)}`
                   : 'Not signed in today'}
@@ -242,7 +282,13 @@ export function Attendance() {
                       onClick={handleSignIn}
                       loading={actionLoading}
                       size="lg"
-                      className="w-full"
+                      className={`w-full ${
+                        office.phase === 'after'
+                          ? 'ring-2 ring-amber-500/40'
+                          : office.phase === 'before'
+                            ? 'ring-2 ring-sky-500/30'
+                            : ''
+                      }`}
                       icon={<LogIn size={20} />}
                     >
                       Sign In
@@ -261,7 +307,13 @@ export function Attendance() {
                       loading={actionLoading}
                       variant="secondary"
                       size="lg"
-                      className="w-full ring-1 ring-emerald-500/30"
+                      className={`w-full ring-2 ${
+                        office.phase === 'after'
+                          ? 'ring-amber-500/50'
+                          : office.phase === 'before'
+                            ? 'ring-sky-500/40'
+                            : 'ring-emerald-500/40'
+                      }`}
                       icon={<LogOut size={20} />}
                     >
                       Sign Out
@@ -281,6 +333,10 @@ export function Attendance() {
       <PermissionGate permission="attendance.export">
         <AttendanceExportPanel selectedEmployeeId={user?._id ?? null} />
       </PermissionGate>
+
+      {showCalendar && me && (
+        <MyAttendanceCalendarModal person={me} onClose={() => setShowCalendar(false)} />
+      )}
     </div>
   )
 }
