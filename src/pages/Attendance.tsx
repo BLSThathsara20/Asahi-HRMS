@@ -12,9 +12,7 @@ import { useAuth } from '../context/AuthContext'
 import { getDepartmentColor, getDepartmentLabel } from '../lib/types'
 import { usePermissions } from '../hooks/usePermissions'
 import { isSuperAdmin } from '../lib/permissions'
-import { PermissionGate } from '../components/auth/ProtectedRoute'
 import { AttendanceHistoryPanel } from '../components/attendance/AttendanceHistoryPanel'
-import { AttendanceExportPanel } from '../components/attendance/AttendanceExportPanel'
 import { GoogleSheetsStatus } from '../components/attendance/GoogleSheetsStatus'
 import { AttendanceLocationDisplay } from '../components/attendance/AttendanceLocationDisplay'
 import { MyAttendanceCalendarModal } from '../components/attendance/MyAttendanceCalendarModal'
@@ -366,14 +364,12 @@ export function Attendance() {
         <AttendanceHistoryPanel
           userId={user._id}
           canManageTeam={can('attendance.manage')}
+          canExport={can('attendance.export')}
+          userName={`${user.firstName} ${user.lastName}`}
         />
       )}
 
       {can('attendance.manage') && <GoogleSheetsStatus />}
-
-      <PermissionGate permission="attendance.export">
-        <AttendanceExportPanel selectedEmployeeId={user?._id ?? null} />
-      </PermissionGate>
 
       {showCalendar && me && (
         <MyAttendanceCalendarModal person={me} onClose={() => setShowCalendar(false)} />
