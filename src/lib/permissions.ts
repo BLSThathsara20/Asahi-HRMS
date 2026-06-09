@@ -154,7 +154,7 @@ export const ROUTE_PERMISSIONS: Record<string, Permission> = {
 
 export const NAV_ITEMS_CONFIG = [
   { to: '/', label: 'Dashboard', permission: 'dashboard.view' as Permission },
-  { to: '/attendance', label: 'Sign In / Out', permission: 'attendance.view' as Permission },
+  { to: '/attendance', label: 'Attendance', permission: 'attendance.view' as Permission },
   { to: '/employees', label: 'People', permission: 'employees.view' as Permission },
   { to: '/register', label: 'Add Person', permission: 'employees.register' as Permission },
   { to: '/finance', label: 'Finance', permission: 'finance.view' as Permission },

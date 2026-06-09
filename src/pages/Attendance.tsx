@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext'
 import { getDepartmentColor, getDepartmentLabel } from '../lib/types'
 import { usePermissions } from '../hooks/usePermissions'
 import { PermissionGate } from '../components/auth/ProtectedRoute'
+import { AttendanceHistoryPanel } from '../components/attendance/AttendanceHistoryPanel'
 import { AttendanceExportPanel } from '../components/attendance/AttendanceExportPanel'
 import { GoogleSheetsStatus } from '../components/attendance/GoogleSheetsStatus'
 import { AttendanceLocationDisplay } from '../components/attendance/AttendanceLocationDisplay'
@@ -116,8 +117,8 @@ export function Attendance() {
       )}
 
       <Header
-        title="Sign In / Out"
-        subtitle="Tap below to clock yourself in or out"
+        title="Attendance"
+        subtitle="Clock in or out and review attendance records"
       />
 
       <AnimatePresence>
@@ -347,6 +348,13 @@ export function Attendance() {
           <p className="text-sm text-[var(--text-muted)]">Could not load your profile.</p>
         )}
       </GlassCard>
+
+      {user && (
+        <AttendanceHistoryPanel
+          userId={user._id}
+          canManageTeam={can('attendance.manage')}
+        />
+      )}
 
       {can('attendance.manage') && <GoogleSheetsStatus />}
 

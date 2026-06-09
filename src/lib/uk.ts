@@ -44,6 +44,32 @@ export function getCurrentUKYearMonth(): string {
   return getUKToday().slice(0, 7)
 }
 
+export function addDaysToUKDate(ukDate: string, days: number): string {
+  const [year, month, day] = ukDate.split('-').map(Number)
+  const d = new Date(Date.UTC(year, month - 1, day + days, 12, 0, 0))
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: UK_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d)
+}
+
+export type DateRangePreset = 'today' | 'week' | 'month' | 'last_month' | 'custom'
+
+export function getDateRangePreset(preset: DateRangePreset): { start: string; end: string } {
+  const today = getUKToday()
+  if (preset === 'today') return { start: today, end: today }
+  if (preset === 'week') return { start: addDaysToUKDate(today, -6), end: today }
+  if (preset === 'month') return getUKMonthRange(getCurrentUKYearMonth())
+  if (preset === 'last_month') {
+    const [year, month] = getCurrentUKYearMonth().split('-').map(Number)
+    const prev = month === 1 ? `${year - 1}-12` : `${year}-${String(month - 1).padStart(2, '0')}`
+    return getUKMonthRange(prev)
+  }
+  return getUKMonthRange(getCurrentUKYearMonth())
+}
+
 export function getUKMonthRange(yearMonth: string): { start: string; end: string } {
   const [year, month] = yearMonth.split('-').map(Number)
   const start = `${year}-${String(month).padStart(2, '0')}-01`

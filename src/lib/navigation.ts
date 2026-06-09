@@ -1,6 +1,6 @@
 import {
   LayoutDashboard,
-  LogIn,
+  CalendarDays,
   Users,
   UserPlus,
   UserCog,
@@ -13,7 +13,7 @@ import type { Permission } from './types'
 
 export const NAV_ICONS: Record<string, LucideIcon> = {
   '/': LayoutDashboard,
-  '/attendance': LogIn,
+  '/attendance': CalendarDays,
   '/employees': Users,
   '/register': UserPlus,
   '/users': UserCog,
@@ -23,7 +23,7 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
 
 export const NAV_SHORT_LABELS: Record<string, string> = {
   '/': 'Home',
-  '/attendance': 'Clock',
+  '/attendance': 'Attendance',
   '/employees': 'Staff',
   '/register': 'Add',
   '/users': 'Users',
