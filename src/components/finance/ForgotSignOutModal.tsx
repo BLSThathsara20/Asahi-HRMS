@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { X, AlertTriangle, Clock, CheckCircle2, Calculator } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { Modal } from '../ui/Modal'
 import { resolveForgotSignOut } from '../../lib/sanity'
 import {
   formatMinutesAsTime,
@@ -83,21 +83,7 @@ export function ForgotSignOutModal({
   const allFixed = records.length === 0
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 40 }}
-          onClick={(e) => e.stopPropagation()}
-          className="glass-strong max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl p-6 sm:rounded-2xl"
-        >
+    <Modal onClose={onClose} maxWidth="2xl">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
@@ -187,8 +173,6 @@ export function ForgotSignOutModal({
               {allFixed ? 'Calculate payroll' : `Fix ${records.length} more first`}
             </Button>
           </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    </Modal>
   )
 }

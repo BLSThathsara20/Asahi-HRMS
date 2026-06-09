@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
+import { Modal } from '../ui/Modal'
 import { EmployeeAvatar } from '../EmployeeAvatar'
 import { AttendanceCalendar } from '../employees/AttendanceCalendar'
 import { fetchEmployeeAttendanceHistory } from '../../lib/sanity'
@@ -53,22 +53,7 @@ export function MyAttendanceCalendarModal({ person, onClose }: MyAttendanceCalen
   const isCurrentMonth = yearMonth === getCurrentUKYearMonth()
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 48, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 32, scale: 0.98 }}
-          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-          onClick={(e) => e.stopPropagation()}
-          className="glass-strong max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl p-6 sm:rounded-2xl"
-        >
+    <Modal onClose={onClose} maxWidth="md">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
               <EmployeeAvatar employee={person} size="md" />
@@ -137,8 +122,6 @@ export function MyAttendanceCalendarModal({ person, onClose }: MyAttendanceCalen
               <AttendanceCalendar yearMonth={yearMonth} dayMap={dayMap} today={today} />
             )}
           </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    </Modal>
   )
 }

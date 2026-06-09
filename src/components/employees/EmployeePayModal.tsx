@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { X, PoundSterling, History } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { Modal } from '../ui/Modal'
 import { updateEmployeePay } from '../../lib/sanity'
 import {
   EMPLOYMENT_TYPE_LABELS,
@@ -88,21 +89,7 @@ export function EmployeePayModal({ employee, onClose, onSaved }: EmployeePayModa
   }
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 40 }}
-          onClick={(e) => e.stopPropagation()}
-          className="glass-strong max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl p-6 sm:rounded-2xl"
-        >
+    <Modal onClose={onClose} maxWidth="lg">
           <div className="mb-4 flex items-start justify-between">
             <div>
               <h2 className="text-lg font-semibold text-[var(--text-primary)]">
@@ -277,8 +264,6 @@ export function EmployeePayModal({ employee, onClose, onSaved }: EmployeePayModa
               </div>
             </div>
           )}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    </Modal>
   )
 }

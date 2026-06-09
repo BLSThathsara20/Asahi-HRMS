@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   X,
   ChevronLeft,
@@ -12,6 +11,7 @@ import {
   CalendarDays,
 } from 'lucide-react'
 import { EmployeeAvatar } from '../EmployeeAvatar'
+import { Modal } from '../ui/Modal'
 import { Badge } from '../ui/Badge'
 import { AttendanceCalendar } from './AttendanceCalendar'
 import { getRoleColor, getRoleLabel } from '../../lib/auth'
@@ -67,21 +67,7 @@ export function PersonProfileModal({ person, onClose }: PersonProfileModalProps)
   const isCurrentMonth = yearMonth === getCurrentUKYearMonth()
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 40 }}
-          onClick={(e) => e.stopPropagation()}
-          className="glass-strong max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl p-6 sm:rounded-2xl"
-        >
+    <Modal onClose={onClose} maxWidth="lg">
           <div className="mb-5 flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <EmployeeAvatar employee={person} size="lg" />
@@ -168,9 +154,7 @@ export function PersonProfileModal({ person, onClose }: PersonProfileModalProps)
               <AttendanceCalendar yearMonth={yearMonth} dayMap={dayMap} today={today} />
             )}
           </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    </Modal>
   )
 }
 

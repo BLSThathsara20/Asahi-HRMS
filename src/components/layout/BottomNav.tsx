@@ -11,7 +11,7 @@ export function BottomNav() {
   if (navItems.length === 0) return null
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 lg:hidden">
       <div className="mx-auto max-w-lg px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <div className="glass-strong flex items-stretch justify-around rounded-2xl px-1 py-1.5 shadow-lg">
           {navItems.map(({ to, shortLabel, icon: Icon }) => (
