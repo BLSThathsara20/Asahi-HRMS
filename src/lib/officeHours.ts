@@ -55,6 +55,47 @@ export function formatMinutesAsTime(minutes: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
+export function ukWeekdayFromDate(date: string): number {
+  const [year, month, day] = date.split('-').map(Number)
+  const noonUtc = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+  const short = new Intl.DateTimeFormat('en-GB', {
+    timeZone: UK_TIMEZONE,
+    weekday: 'short',
+  }).format(noonUtc)
+  return WEEKDAY_MAP[short] ?? 1
+}
+
+/** Convert a UK calendar date + wall-clock time to an ISO UTC string. */
+export function ukDateTimeToIso(ukDate: string, hour: number, minute: number): string {
+  const [y, m, d] = ukDate.split('-').map(Number)
+  const start = Date.UTC(y, m - 1, d - 1, 0, 0, 0)
+  const end = Date.UTC(y, m - 1, d + 1, 23, 59, 59)
+
+  for (let t = start; t <= end; t += 60_000) {
+    const instant = new Date(t)
+    const dateStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: UK_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(instant)
+    if (dateStr !== ukDate) continue
+    const parts = getUKTimeParts(instant)
+    if (parts.hour === hour && parts.minute === minute) {
+      return instant.toISOString()
+    }
+  }
+
+  return new Date(Date.UTC(y, m - 1, d, 19, 0, 0)).toISOString()
+}
+
+/** Auto sign-out time for a missed clock-out (office close on that UK date). */
+export function getAutoSignOutIsoForDate(date: string): string {
+  const schedule = getOfficeHoursForDay(ukWeekdayFromDate(date))
+  const closeMins = schedule?.close ?? toMinutes(19, 0)
+  return ukDateTimeToIso(date, Math.floor(closeMins / 60), closeMins % 60)
+}
+
 export function getOfficeHoursPhase(now = new Date()): OfficeHoursPhase {
   const { weekday, hour, minute } = getUKTimeParts(now)
   const schedule = getOfficeHoursForDay(weekday)

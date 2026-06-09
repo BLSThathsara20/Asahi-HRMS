@@ -10,16 +10,18 @@ import {
 import { enGB } from 'date-fns/locale'
 import type { AttendanceRecord } from './types'
 
-export type DayAttendanceStatus = 'none' | 'present' | 'signed_in'
+export type DayAttendanceStatus = 'none' | 'present' | 'signed_in' | 'forgot_sign_out'
 
 export function buildAttendanceDayMap(
   records: AttendanceRecord[],
 ): Map<string, DayAttendanceStatus> {
   const map = new Map<string, DayAttendanceStatus>()
   for (const record of records) {
-    if (record.status === 'signed_out') {
+    if (record.status === 'forgot_sign_out') {
+      map.set(record.date, 'forgot_sign_out')
+    } else if (record.status === 'signed_out') {
       map.set(record.date, 'present')
-    } else if (!map.has(record.date) || map.get(record.date) !== 'present') {
+    } else if (!map.has(record.date) || map.get(record.date) === 'none') {
       map.set(record.date, 'signed_in')
     }
   }
@@ -29,7 +31,7 @@ export function buildAttendanceDayMap(
 export function countPresentDays(map: Map<string, DayAttendanceStatus>): number {
   let count = 0
   for (const status of map.values()) {
-    if (status === 'present' || status === 'signed_in') count++
+    if (status === 'present' || status === 'signed_in' || status === 'forgot_sign_out') count++
   }
   return count
 }

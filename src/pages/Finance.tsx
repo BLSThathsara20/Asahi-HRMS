@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   PoundSterling,
@@ -17,6 +17,8 @@ import { Badge } from '../components/ui/Badge'
 import { PermissionGate } from '../components/auth/ProtectedRoute'
 import { EmployeeSalaryCalculator } from '../components/finance/EmployeeSalaryCalculator'
 import { MarkPaidModal, PaymentRecordSummary } from '../components/finance/MarkPaidModal'
+import { ForgotSignOutModal } from '../components/finance/ForgotSignOutModal'
+import { fetchForgotSignOutInPeriod } from '../lib/sanity'
 import { usePayroll } from '../hooks/usePayroll'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
@@ -38,7 +40,7 @@ import {
   getUKMonthRange,
   getUKToday,
 } from '../lib/uk'
-import type { PayrollLine } from '../lib/types'
+import type { AttendanceRecord, PayrollLine } from '../lib/types'
 
 export function Finance() {
   const { can, user } = useAuth()
@@ -50,6 +52,24 @@ export function Finance() {
   const [bulkPaying, setBulkPaying] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [markPaidLine, setMarkPaidLine] = useState<PayrollLine | null>(null)
+  const [forgotRecords, setForgotRecords] = useState<AttendanceRecord[]>([])
+  const [showForgotModal, setShowForgotModal] = useState(false)
+
+  const loadForgotRecords = useCallback(async () => {
+    if (!can('finance.manage')) {
+      setForgotRecords([])
+      return
+    }
+    try {
+      setForgotRecords(await fetchForgotSignOutInPeriod(start, end))
+    } catch {
+      setForgotRecords([])
+    }
+  }, [can, start, end])
+
+  useEffect(() => {
+    loadForgotRecords()
+  }, [loadForgotRecords])
 
   const recordedBy = user ? `${user.firstName} ${user.lastName}` : 'Unknown'
   const periodLabel = formatUKMonth(yearMonth)
@@ -160,12 +180,45 @@ export function Finance() {
 
   const hasCalculatedEntries = stats.calculatedCount > 0
 
+  const handleCalculatePayroll = async () => {
+    const forgot = await fetchForgotSignOutInPeriod(start, end)
+    setForgotRecords(forgot)
+    if (forgot.length > 0) {
+      setShowForgotModal(true)
+      return
+    }
+    await runPayroll()
+  }
+
+  const handleContinueAfterForgot = async () => {
+    setShowForgotModal(false)
+    await runPayroll()
+    await loadForgotRecords()
+  }
+
   return (
     <div>
       <Header
         title="Finance & Payroll"
         subtitle="Calculate salaries from attendance, then record payments when paid"
       />
+
+      {forgotRecords.length > 0 && can('finance.manage') && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl bg-amber-500/15 px-4 py-3">
+          <AlertCircle size={18} className="shrink-0 text-amber-500" />
+          <div className="flex-1 text-sm text-amber-800 dark:text-amber-300">
+            {forgotRecords.length} forgot sign out record
+            {forgotRecords.length !== 1 ? 's' : ''} in {periodLabel} — fix before calculating
+            payroll
+          </div>
+          <button
+            onClick={() => setShowForgotModal(true)}
+            className="shrink-0 text-xs font-medium text-asahi-blue hover:underline cursor-pointer border-0 bg-transparent"
+          >
+            Review
+          </button>
+        </div>
+      )}
 
       <GlassCard strong className="mb-4 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -186,7 +239,7 @@ export function Finance() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <PermissionGate permission="finance.manage">
               <Button
-                onClick={runPayroll}
+                onClick={handleCalculatePayroll}
                 loading={generating}
                 icon={<Calculator size={16} />}
                 className="w-full sm:w-auto"
@@ -362,6 +415,16 @@ export function Finance() {
           recordedBy={recordedBy}
           onClose={() => setMarkPaidLine(null)}
           onConfirm={(input) => handleRecordPayment(markPaidLine, input)}
+        />
+      )}
+
+      {showForgotModal && forgotRecords.length > 0 && (
+        <ForgotSignOutModal
+          records={forgotRecords}
+          periodLabel={periodLabel}
+          onClose={() => setShowForgotModal(false)}
+          onContinue={handleContinueAfterForgot}
+          onRecordsChange={loadForgotRecords}
         />
       )}
     </div>

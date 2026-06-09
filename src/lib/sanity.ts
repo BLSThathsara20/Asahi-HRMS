@@ -314,8 +314,96 @@ export async function updateEmployeePay(
   return fetchEmployeeById(employeeId) as Promise<Employee>
 }
 
+/** Mark previous-day open sign-ins as forgot sign out (needs manual fix before payroll). */
+export async function closeStaleAttendanceRecords(employeeId?: string): Promise<void> {
+  const today = getUKToday()
+
+  if (!isSanityConfigured) {
+    for (const record of MOCK_ATTENDANCE) {
+      if (record.status !== 'signed_in' || record.date >= today) continue
+      if (employeeId && record.employee._id !== employeeId) continue
+      record.status = 'forgot_sign_out'
+      record.signOutTime = undefined
+    }
+    return
+  }
+
+  const params: Record<string, string> = { today }
+  let employeeFilter = ''
+  if (employeeId) {
+    employeeFilter = ' && employee._ref == $employeeId'
+    params.employeeId = employeeId
+  }
+
+  const stale = await getClient().fetch<{ _id: string }[]>(
+    `*[_type == "attendance" && status == "signed_in" && date < $today${employeeFilter}] { _id }`,
+    params,
+  )
+
+  for (const row of stale) {
+    await getClient()
+      .patch(row._id)
+      .set({ status: 'forgot_sign_out', signOutTime: null, signOutLocation: null })
+      .commit()
+  }
+}
+
+export async function fetchForgotSignOutInPeriod(
+  periodStart: string,
+  periodEnd: string,
+): Promise<AttendanceRecord[]> {
+  await closeStaleAttendanceRecords()
+
+  if (!isSanityConfigured) {
+    return MOCK_ATTENDANCE.filter(
+      (a) =>
+        a.status === 'forgot_sign_out' &&
+        a.date >= periodStart &&
+        a.date <= periodEnd,
+    ).sort(
+      (a, b) =>
+        a.date.localeCompare(b.date) ||
+        a.employee.employeeId.localeCompare(b.employee.employeeId),
+    )
+  }
+
+  return getClient().fetch<AttendanceRecord[]>(
+    `*[_type == "attendance" && status == "forgot_sign_out" && date >= $start && date <= $end]
+      | order(date asc, employee->employeeId asc) { ${ATTENDANCE_RECORD_FIELDS} }`,
+    { start: periodStart, end: periodEnd },
+  )
+}
+
+export async function resolveForgotSignOut(
+  attendanceId: string,
+  signOutTime: string,
+): Promise<AttendanceRecord> {
+  if (!isSanityConfigured) {
+    const record = MOCK_ATTENDANCE.find((a) => a._id === attendanceId)
+    if (!record || record.status !== 'forgot_sign_out') {
+      throw new Error('Record not found or not awaiting sign out')
+    }
+    record.status = 'signed_out'
+    record.signOutTime = signOutTime
+    return record
+  }
+
+  await getClient()
+    .patch(attendanceId)
+    .set({ status: 'signed_out', signOutTime })
+    .commit()
+
+  const record = await getClient().fetch<AttendanceRecord | null>(
+    `*[_type == "attendance" && _id == $id][0] { ${ATTENDANCE_RECORD_FIELDS} }`,
+    { id: attendanceId },
+  )
+  if (!record) throw new Error('Failed to load attendance after update')
+  return record
+}
+
 export async function fetchTodayAttendance(): Promise<AttendanceRecord[]> {
   const today = getUKToday()
+  await closeStaleAttendanceRecords()
 
   if (!isSanityConfigured) {
     return MOCK_ATTENDANCE.filter((a) => a.date === today)
@@ -346,6 +434,7 @@ export async function signInEmployee(
 ): Promise<AttendanceRecord> {
   const today = getUKToday()
   const now = getUKNow()
+  await closeStaleAttendanceRecords(employeeId)
 
   if (!isSanityConfigured) {
     const employee = MOCK_EMPLOYEES.find((e) => e._id === employeeId)
@@ -424,6 +513,8 @@ export async function fetchEmployeeAttendanceHistory(
   startDate?: string,
   endDate?: string,
 ): Promise<AttendanceRecord[]> {
+  await closeStaleAttendanceRecords(employeeId)
+
   if (!isSanityConfigured) {
     return MOCK_ATTENDANCE.filter((a) => {
       if (a.employee._id !== employeeId) return false

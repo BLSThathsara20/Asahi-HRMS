@@ -33,7 +33,9 @@ function formatHours(hours: number): string {
 }
 
 function statusLabel(status: AttendanceRecord['status']): string {
-  return status === 'signed_in' ? 'Signed In' : 'Signed Out'
+  if (status === 'signed_in') return 'Signed In'
+  if (status === 'forgot_sign_out') return 'Forgot Sign Out'
+  return 'Signed Out'
 }
 
 interface PdfHeaderOptions {

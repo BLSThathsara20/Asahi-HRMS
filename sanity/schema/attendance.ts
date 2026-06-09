@@ -29,6 +29,7 @@ export default {
         list: [
           { title: 'Signed In', value: 'signed_in' },
           { title: 'Signed Out', value: 'signed_out' },
+          { title: 'Forgot Sign Out', value: 'forgot_sign_out' },
         ],
       },
       validation: (Rule: { required: () => unknown }) => Rule.required(),

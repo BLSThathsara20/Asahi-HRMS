@@ -78,7 +78,7 @@ export interface Department {
   createdAt?: string
 }
 
-export type AttendanceStatus = 'signed_in' | 'signed_out'
+export type AttendanceStatus = 'signed_in' | 'signed_out' | 'forgot_sign_out'
 
 export interface Employee {
   _id: string
