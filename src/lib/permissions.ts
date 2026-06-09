@@ -50,20 +50,20 @@ export const PERMISSION_GROUPS: {
     ],
   },
   {
-    label: 'Employees',
+    label: 'People',
     permissions: [
-      { key: 'employees.view', label: 'View Employees', description: 'Browse employee list' },
-      { key: 'employees.register', label: 'Register Employees', description: 'Add new team members with login access' },
-      { key: 'employees.edit', label: 'Edit Employees', description: 'Update employee details' },
-      { key: 'employees.delete', label: 'Delete Employees', description: 'Remove employees from active list' },
-      { key: 'employees.manage_pay', label: 'Manage Employee Pay', description: 'Update pay rates and view pay change history' },
+      { key: 'employees.view', label: 'View People', description: 'Browse people list' },
+      { key: 'employees.register', label: 'Register People', description: 'Add new people with login access' },
+      { key: 'employees.edit', label: 'Edit People', description: 'Update person details' },
+      { key: 'employees.delete', label: 'Remove People', description: 'Remove people from active list' },
+      { key: 'employees.manage_pay', label: 'Manage Pay', description: 'Update pay rates and view pay change history' },
     ],
   },
   {
     label: 'Access Control',
     permissions: [
       { key: 'users.view', label: 'View Access', description: 'View user roles and permissions' },
-      { key: 'users.register', label: 'Register Users', description: 'Create employee accounts' },
+      { key: 'users.register', label: 'Register People', description: 'Create people accounts' },
       { key: 'users.edit', label: 'Edit Users', description: 'Update user details and role' },
       { key: 'users.delete', label: 'Delete Users', description: 'Deactivate accounts' },
       { key: 'users.manage_permissions', label: 'Manage User Access', description: 'Set per-user custom permissions' },
@@ -147,8 +147,8 @@ export const ROUTE_PERMISSIONS: Record<string, Permission> = {
 export const NAV_ITEMS_CONFIG = [
   { to: '/', label: 'Dashboard', permission: 'dashboard.view' as Permission },
   { to: '/attendance', label: 'Sign In / Out', permission: 'attendance.view' as Permission },
-  { to: '/employees', label: 'Employees', permission: 'employees.view' as Permission },
-  { to: '/register', label: 'Register', permission: 'employees.register' as Permission },
+  { to: '/employees', label: 'People', permission: 'employees.view' as Permission },
+  { to: '/register', label: 'Add Person', permission: 'employees.register' as Permission },
   { to: '/finance', label: 'Finance', permission: 'finance.view' as Permission },
   { to: '/roles', label: 'Roles', permission: 'roles.view' as Permission },
 ]

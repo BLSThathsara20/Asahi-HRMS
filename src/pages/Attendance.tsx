@@ -113,7 +113,7 @@ export function Attendance() {
 
           <div className="max-h-[50vh] space-y-2 overflow-y-auto lg:max-h-[480px]">
             {empLoading ? (
-              <p className="text-sm text-[var(--text-muted)]">Loading employees...</p>
+              <p className="text-sm text-[var(--text-muted)]">Loading people...</p>
             ) : (
               filtered.map((employee) => {
                 const status = getStatus(employee._id)
@@ -215,7 +215,7 @@ export function Attendance() {
                 </div>
               ) : (
                 <p className="mt-8 text-sm text-[var(--text-muted)]">
-                  View only — you do not have permission to sign employees in or out.
+                  View only — you do not have permission to sign people in or out.
                 </p>
               )}
             </motion.div>
@@ -229,7 +229,7 @@ export function Attendance() {
                 <LogIn size={32} className="text-[var(--text-muted)]" />
               </div>
               <p className="text-lg font-medium text-[var(--text-primary)]">
-                Select an employee
+                Select a person
               </p>
               <p className="mt-1 text-sm text-[var(--text-muted)]">
                 Choose from the list to sign in or out

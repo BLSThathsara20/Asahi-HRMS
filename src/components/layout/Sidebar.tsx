@@ -75,7 +75,7 @@ export function Sidebar() {
       )}
 
       <div className="mt-auto border-t border-white/10 pt-4 px-2">
-        <p className="text-xs text-[var(--text-muted)]">Asahi Group Ltd</p>
+        <p className="text-xs text-[var(--text-muted)]">Asahi Motors London</p>
         <p className="text-xs text-[var(--text-muted)]">United Kingdom</p>
       </div>
     </motion.aside>

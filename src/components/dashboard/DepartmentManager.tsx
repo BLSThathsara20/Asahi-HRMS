@@ -1,14 +1,10 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Building2, Plus, Trash2, UserCheck, CheckCircle2 } from 'lucide-react'
+import { Building2, Plus, Trash2, CheckCircle2 } from 'lucide-react'
 import { GlassCard } from '../ui/GlassCard'
 import { Button } from '../ui/Button'
 import { EmployeeAvatar } from '../EmployeeAvatar'
-import {
-  createDepartment,
-  deleteDepartment,
-  assignEmployeeToDepartment,
-} from '../../lib/sanity/departments'
+import { createDepartment, deleteDepartment } from '../../lib/sanity/departments'
 import type { Department, Employee } from '../../lib/types'
 
 const PRESET_COLORS = ['#1a6fd4', '#059669', '#d97706', '#7c3aed', '#dc2626', '#64748b']
@@ -31,9 +27,6 @@ export function DepartmentManager({
   const [color, setColor] = useState(PRESET_COLORS[0])
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [assignDeptId, setAssignDeptId] = useState('')
-  const [assignEmpId, setAssignEmpId] = useState('')
-  const [assigning, setAssigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -59,7 +52,7 @@ export function DepartmentManager({
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this department? Employees must be reassigned first.')) return
+    if (!confirm('Delete this department? People must be moved to another department first.')) return
     setDeletingId(id)
     setError(null)
     try {
@@ -70,22 +63,6 @@ export function DepartmentManager({
       setError(e instanceof Error ? e.message : 'Failed to delete department')
     } finally {
       setDeletingId(null)
-    }
-  }
-
-  const handleAssign = async () => {
-    if (!assignDeptId || !assignEmpId) return
-    setAssigning(true)
-    setError(null)
-    try {
-      await assignEmployeeToDepartment(assignEmpId, assignDeptId)
-      showSuccess('Employee assigned to department')
-      setAssignEmpId('')
-      onRefresh()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to assign employee')
-    } finally {
-      setAssigning(false)
     }
   }
 
@@ -172,7 +149,7 @@ export function DepartmentManager({
                   <div>
                     <p className="font-medium text-[var(--text-primary)]">{dept.name}</p>
                     <p className="text-xs text-[var(--text-muted)]">
-                      {deptEmployeeCount(dept._id)} employee(s)
+                      {deptEmployeeCount(dept._id)} people
                     </p>
                   </div>
                 </div>
@@ -205,47 +182,6 @@ export function DepartmentManager({
         )}
       </div>
 
-      {departments.length > 0 && employees.length > 0 && (
-        <div className="rounded-xl border border-white/10 p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <UserCheck size={16} className="text-asahi-blue" />
-            <p className="text-xs font-medium text-[var(--text-muted)]">Assign Employee</p>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <select
-              className={inputClass}
-              value={assignEmpId}
-              onChange={(e) => setAssignEmpId(e.target.value)}
-            >
-              <option value="">Select employee</option>
-              {employees.map((e) => (
-                <option key={e._id} value={e._id}>
-                  {e.firstName} {e.lastName}
-                </option>
-              ))}
-            </select>
-            <select
-              className={inputClass}
-              value={assignDeptId}
-              onChange={(e) => setAssignDeptId(e.target.value)}
-            >
-              <option value="">Select department</option>
-              {departments.map((d) => (
-                <option key={d._id} value={d._id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-            <Button
-              onClick={handleAssign}
-              loading={assigning}
-              disabled={!assignEmpId || !assignDeptId}
-            >
-              Assign
-            </Button>
-          </div>
-        </div>
-      )}
     </GlassCard>
   )
 }

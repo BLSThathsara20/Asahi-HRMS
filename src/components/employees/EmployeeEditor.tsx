@@ -108,7 +108,7 @@ export function EmployeeEditor({ employee, onClose, onSaved }: EmployeeEditorPro
           <div className="mb-4 flex items-start justify-between">
             <div>
               <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-                Edit Employee
+                Edit Person
               </h2>
               <p className="text-sm text-[var(--text-muted)]">{employee.employeeId}</p>
             </div>

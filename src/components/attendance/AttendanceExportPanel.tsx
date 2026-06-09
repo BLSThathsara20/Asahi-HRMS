@@ -42,12 +42,12 @@ export function AttendanceExportPanel({ selectedEmployeeId }: AttendanceExportPa
     try {
       if (mode === 'employee') {
         if (!employeeId) {
-          setError('Please select an employee')
+          setError('Please select a person')
           return
         }
         const employee = employees.find((e) => e._id === employeeId)
         if (!employee) {
-          setError('Employee not found')
+          setError('Person not found')
           return
         }
         const records = await fetchEmployeeAttendanceHistory(employeeId, start, end)
@@ -80,8 +80,8 @@ export function AttendanceExportPanel({ selectedEmployeeId }: AttendanceExportPa
 
       <div className="mb-4 flex gap-2 rounded-xl bg-white/10 p-1">
         {([
-          { key: 'employee' as const, label: 'Single Employee', icon: User },
-          { key: 'team' as const, label: 'All Staff', icon: Users },
+          { key: 'employee' as const, label: 'One Person', icon: User },
+          { key: 'team' as const, label: 'Everyone', icon: Users },
         ]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -102,7 +102,7 @@ export function AttendanceExportPanel({ selectedEmployeeId }: AttendanceExportPa
         {mode === 'employee' && (
           <div>
             <label className="mb-1.5 block text-xs font-medium text-[var(--text-muted)]">
-              Employee
+              Person
             </label>
             <select
               className={inputClass}
@@ -110,7 +110,7 @@ export function AttendanceExportPanel({ selectedEmployeeId }: AttendanceExportPa
               onChange={(e) => setEmployeeId(e.target.value)}
               disabled={empLoading}
             >
-              <option value="">Select employee</option>
+              <option value="">Select person</option>
               {employees.map((e) => (
                 <option key={e._id} value={e._id}>
                   {e.employeeId} — {e.firstName} {e.lastName}

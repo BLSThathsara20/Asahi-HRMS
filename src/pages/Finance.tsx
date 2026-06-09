@@ -110,7 +110,7 @@ export function Finance() {
           { label: 'Paid', value: formatGBP(stats.paid), icon: CheckCircle2, color: 'text-emerald-500' },
           { label: 'Pending', value: formatGBP(stats.pending), icon: Clock, color: 'text-amber-500' },
           {
-            label: 'Employees',
+            label: 'People',
             value: `${stats.paidCount}/${stats.count} paid`,
             icon: RefreshCw,
           },
@@ -142,7 +142,7 @@ export function Finance() {
         {loading ? (
           <p className="text-sm text-[var(--text-muted)]">Loading payroll...</p>
         ) : lines.length === 0 ? (
-          <p className="text-sm text-[var(--text-muted)]">No employees found.</p>
+          <p className="text-sm text-[var(--text-muted)]">No people found.</p>
         ) : (
           <div className="space-y-3">
             {lines.map((line) => (
@@ -170,7 +170,7 @@ export function Finance() {
                       </p>
                     ) : (
                       <p className="mt-1 text-xs text-amber-500">
-                        Pay not configured — update employee registration
+                        Pay not configured — update person details
                       </p>
                     )}
                   </div>

@@ -46,8 +46,8 @@ export function Employees() {
   return (
     <div>
       <Header
-        title="Employees"
-        subtitle={`${employees.length} active staff members`}
+        title="People"
+        subtitle={`${employees.length} active at Asahi Motors London`}
       />
 
       <GlassCard strong className="p-4 mb-4">
@@ -59,7 +59,7 @@ export function Employees() {
             />
             <input
               type="text"
-              placeholder="Search employees..."
+              placeholder="Search people..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-xl border border-white/20 bg-white/10 py-2.5 pl-9 pr-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-asahi-blue/50"
@@ -99,7 +99,7 @@ export function Employees() {
       </GlassCard>
 
       {loading ? (
-        <p className="text-sm text-[var(--text-muted)]">Loading employees...</p>
+        <p className="text-sm text-[var(--text-muted)]">Loading people...</p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((employee, i) => {
@@ -194,7 +194,7 @@ export function Employees() {
                           onClick={async () => {
                             if (
                               !confirm(
-                                `Remove ${employee.firstName} ${employee.lastName} from active employees?`,
+                                `Remove ${employee.firstName} ${employee.lastName} from the active list?`,
                               )
                             )
                               return
@@ -224,7 +224,7 @@ export function Employees() {
 
       {!loading && filtered.length === 0 && (
         <p className="text-center text-sm text-[var(--text-muted)] py-8">
-          No employees found.
+          No people found.
         </p>
       )}
 

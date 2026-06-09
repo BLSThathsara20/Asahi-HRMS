@@ -56,7 +56,7 @@ export function SetupSuperAdmin() {
   return (
     <AuthLayout
       title="Initial Setup"
-      subtitle="Create the first Super Admin account for Asahi Group"
+      subtitle="Create the first Super Admin account for Asahi Motors London"
     >
       <div className="mb-4 flex items-center gap-2 rounded-xl bg-purple-500/15 px-4 py-3 text-sm text-purple-700 dark:text-purple-300">
         <Shield size={16} />

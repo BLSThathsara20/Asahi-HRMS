@@ -54,7 +54,7 @@ export function Dashboard() {
     <div>
       <Header
         title="Dashboard"
-        subtitle="Asahi Group Ltd — Manage your dealership"
+        subtitle="Asahi Motors London"
       />
 
       <motion.div variants={container} initial="hidden" animate="show" className="space-y-4">
@@ -65,7 +65,7 @@ export function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
-                      Total Staff
+                      Total People
                     </p>
                     <p className="mt-1 text-4xl font-light text-[var(--text-primary)]">
                       {empLoading ? '—' : employees.length}

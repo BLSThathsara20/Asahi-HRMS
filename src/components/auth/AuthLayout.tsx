@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { ThemeToggle } from '../ui/ThemeToggle'
 import { Logo } from '../Logo'
+import { COMPANY_NAME } from '../../lib/brand'
 
 interface AuthLayoutProps {
   children: ReactNode
@@ -31,7 +32,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
         <div className="glass-strong rounded-2xl p-6">{children}</div>
 
         <p className="mt-6 text-center text-xs text-white/50">
-          Asahi Group Ltd · United Kingdom
+          {COMPANY_NAME} · United Kingdom
         </p>
       </motion.div>
     </div>

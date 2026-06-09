@@ -210,7 +210,7 @@ export async function deleteRole(roleId: string): Promise<void> {
     { id: roleId },
   )
   if (inUse > 0) {
-    throw new Error('Cannot delete a role that is assigned to active employees')
+    throw new Error('Cannot delete a role that is assigned to active people')
   }
 
   await getSanityClient().delete(roleId)

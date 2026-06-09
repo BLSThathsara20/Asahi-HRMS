@@ -94,7 +94,7 @@ export function RegisterEmployee() {
     if (form.employmentType === 'part_time' && form.paymentMethod === 'monthly') {
       const hours = parseFloat(form.hoursPerWeek)
       if (isNaN(hours) || hours <= 0) {
-        setError('Part-time employees need contracted hours per week')
+        setError('Part-time staff need contracted hours per week')
         return
       }
     }
@@ -153,8 +153,8 @@ export function RegisterEmployee() {
   return (
     <div>
       <Header
-        title="Register Employee"
-        subtitle="Add a team member with login access"
+        title="Add Person"
+        subtitle="Register someone at Asahi Motors London"
       />
 
       <GlassCard strong className="mx-auto max-w-xl p-6">
@@ -165,7 +165,7 @@ export function RegisterEmployee() {
             className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400"
           >
             <CheckCircle2 size={16} />
-            Employee registered — they set their password on first login
+            Person registered — they set their password on first login
             {registeredId && ` (ID: ${registeredId})`}
           </motion.div>
         )}
@@ -184,7 +184,7 @@ export function RegisterEmployee() {
 
         <div className="mb-4 flex items-center gap-2 rounded-xl bg-asahi-blue/10 px-4 py-3 text-sm text-[var(--text-secondary)]">
           <Hash size={16} className="text-asahi-blue" />
-          Next Employee ID: <span className="font-semibold text-[var(--text-primary)]">{nextEmployeeId}</span>
+          Staff ID: <span className="font-semibold text-[var(--text-primary)]">{nextEmployeeId}</span>
           <span className="text-xs text-[var(--text-muted)]">(auto-generated)</span>
         </div>
 
@@ -421,12 +421,12 @@ export function RegisterEmployee() {
 
                   {form.paymentMethod === 'hourly' && (
                     <p className="text-xs text-[var(--text-muted)]">
-                      Enter how much this employee is paid per hour worked
+                      Enter hourly pay rate
                     </p>
                   )}
                   {form.paymentMethod === 'daily' && (
                     <p className="text-xs text-[var(--text-muted)]">
-                      Enter how much this employee is paid per completed day
+                      Enter daily pay rate
                     </p>
                   )}
                   {form.paymentMethod === 'monthly' && (
@@ -460,7 +460,7 @@ export function RegisterEmployee() {
             icon={<UserPlus size={18} />}
             disabled={departments.length === 0}
           >
-            Register Employee
+            Add Person
           </Button>
         </form>
       </GlassCard>

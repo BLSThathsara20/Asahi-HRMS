@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { assetUrl } from './brand'
+import { assetUrl, COMPANY_NAME } from './brand'
 import { hoursFromRecord } from './payroll'
 import type { AttendanceRecord, Employee } from './types'
 import { formatUKDate, formatUKDateTime, formatUKTime } from './uk'
@@ -53,7 +53,7 @@ async function drawHeader(doc: jsPDF, options: PdfHeaderOptions): Promise<number
     doc.setFontSize(14)
     doc.setTextColor(...BRAND_BLUE)
     doc.setFont('helvetica', 'bold')
-    doc.text('Asahi Group Ltd', 14, y)
+    doc.text(COMPANY_NAME, 14, y)
     y += 10
   }
 
@@ -98,7 +98,7 @@ function drawEmployeeBlock(doc: jsPDF, employee: Employee, y: number): number {
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(...TEXT_MUTED)
   const details = [
-    `Employee ID: ${employee.employeeId}`,
+    `Staff ID: ${employee.employeeId}`,
     `Department: ${getDepartmentLabel(employee.department)}`,
     `Job Title: ${employee.jobTitle}`,
     employee.email,
@@ -175,7 +175,7 @@ export async function exportEmployeeAttendancePdf(
     doc.setFontSize(8)
     doc.setTextColor(...TEXT_MUTED)
     doc.text(
-      `Asahi Group Ltd — Confidential — Page ${i} of ${pageCount}`,
+      `${COMPANY_NAME} — Confidential — Page ${i} of ${pageCount}`,
       105,
       287,
       { align: 'center' },
@@ -203,7 +203,7 @@ export async function exportTeamAttendancePdf(
   const employeeCount = new Set(records.map((r) => r.employee._id)).size
   doc.setFontSize(9)
   doc.setTextColor(...TEXT_DARK)
-  doc.text(`Employees: ${employeeCount}  ·  Total records: ${records.length}`, 14, y)
+  doc.text(`People: ${employeeCount}  ·  Total records: ${records.length}`, 14, y)
   y += 8
 
   const rows =
@@ -242,7 +242,7 @@ export async function exportTeamAttendancePdf(
     doc.setFontSize(8)
     doc.setTextColor(...TEXT_MUTED)
     doc.text(
-      `Asahi Group Ltd — Confidential — Page ${i} of ${pageCount}`,
+      `${COMPANY_NAME} — Confidential — Page ${i} of ${pageCount}`,
       148,
       200,
       { align: 'center' },
