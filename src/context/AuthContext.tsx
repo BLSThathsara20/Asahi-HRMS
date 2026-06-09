@@ -9,6 +9,7 @@ import {
 import { clearSession, loadSession, saveSession } from '../lib/auth'
 import {
   canDeletePerson,
+  canDeleteRole,
   canEditRolePermissions,
   canEditUserPermissions,
   canManageUser,
@@ -228,6 +229,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const removeRoleById = async (roleId: string) => {
     if (!user || !hasPermission(user, 'roles.manage', roleConfigs)) {
       throw new Error('You do not have permission to delete roles')
+    }
+    const role = roles.find((r) => r._id === roleId)
+    if (!role || !canDeleteRole(role)) {
+      throw new Error('This role cannot be deleted')
     }
     await deleteRole(roleId)
     await reloadRoleConfigs()

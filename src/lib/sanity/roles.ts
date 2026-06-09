@@ -3,6 +3,7 @@ import {
   ALL_PERMISSIONS,
   DEFAULT_NEW_ROLE_PERMISSIONS,
   DEFAULT_ROLE_PERMISSIONS,
+  PROTECTED_ROLE_SLUGS,
 } from '../permissions'
 import type { Permission, RoleConfig } from '../types'
 
@@ -205,8 +206,14 @@ export async function deleteRole(roleId: string): Promise<void> {
     { id: roleId },
   )
   if (!role) throw new Error('Role not found')
-  if (role.isSystem || role.slug === 'super_admin') {
-    throw new Error('System roles cannot be deleted')
+  if (
+    role.slug &&
+    PROTECTED_ROLE_SLUGS.includes(role.slug as (typeof PROTECTED_ROLE_SLUGS)[number])
+  ) {
+    throw new Error('Super Admin and Admin roles cannot be deleted')
+  }
+  if (roleId.startsWith('default-')) {
+    throw new Error('This role is not saved in the database yet')
   }
 
   const inUse = await getSanityClient().fetch<number>(

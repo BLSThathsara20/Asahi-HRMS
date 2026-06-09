@@ -12,6 +12,7 @@ import { useNotifications } from '../context/NotificationContext'
 import { fetchAuthUsers } from '../lib/sanity/auth'
 import { getRoleColor, getRoleLabel } from '../lib/auth'
 import {
+  canDeleteRole,
   canEditRolePermissions,
   DEFAULT_ROLE_PERMISSIONS,
   resolvePermissions,
@@ -240,7 +241,7 @@ export function RolesPermissions() {
                         Reset defaults
                       </button>
                     )}
-                    {can('roles.manage') && !selectedRole.isSystem && (
+                    {can('roles.manage') && canDeleteRole(selectedRole) && (
                       <button
                         onClick={() => handleDeleteRole(selectedRole)}
                         className="flex items-center gap-1 text-xs text-red-500 hover:underline cursor-pointer border-0 bg-transparent"

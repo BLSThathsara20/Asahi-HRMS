@@ -35,7 +35,7 @@ export function ProtectedRoute() {
 }
 
 export function PublicOnlyRoute() {
-  const { user, loading, hasUsers } = useAuth()
+  const { user, loading, hasUsers, roleConfigs } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -57,10 +57,17 @@ export function PublicOnlyRoute() {
   }
 
   if (user) {
-    return <Navigate to="/" replace />
+    return <Navigate to={getFirstAllowedRoute(user, roleConfigs)} replace />
   }
 
   return <Outlet />
+}
+
+export function DefaultRedirect() {
+  const { user, roleConfigs } = useAuth()
+  return (
+    <Navigate to={user ? getFirstAllowedRoute(user, roleConfigs) : '/login'} replace />
+  )
 }
 
 export function PermissionRoute({ permission }: { permission: Permission }) {

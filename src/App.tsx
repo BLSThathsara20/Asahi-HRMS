@@ -1,10 +1,15 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
 import { NotificationToast } from './components/ui/NotificationToast'
 import { AppLayout } from './components/layout/AppLayout'
-import { ProtectedRoute, PublicOnlyRoute, PermissionRoute } from './components/auth/ProtectedRoute'
+import {
+  ProtectedRoute,
+  PublicOnlyRoute,
+  PermissionRoute,
+  DefaultRedirect,
+} from './components/auth/ProtectedRoute'
 import { Dashboard } from './pages/Dashboard'
 import { Attendance } from './pages/Attendance'
 import { Employees } from './pages/Employees'
@@ -52,7 +57,7 @@ export default function App() {
               </Route>
             </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<DefaultRedirect />} />
           </Routes>
           </BrowserRouter>
         </AuthProvider>

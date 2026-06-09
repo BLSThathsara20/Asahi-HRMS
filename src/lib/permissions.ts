@@ -175,12 +175,7 @@ export function getUserRoleRank(user: AuthUser): number {
 }
 
 export function isSuperAdmin(user: AuthUser): boolean {
-  const slug = getUserRoleSlug(user)
-  if (slug === 'super_admin') return true
-  const role = user.role
-  return Boolean(
-    role && typeof role === 'object' && (role.isSystem || role.slug === 'super_admin'),
-  )
+  return getUserRoleSlug(user) === 'super_admin'
 }
 
 export function resolvePermissions(
@@ -194,9 +189,17 @@ export function resolvePermissions(
   }
 
   const slug = getUserRoleSlug(user)
-  const defaults = DEFAULT_ROLE_PERMISSIONS[slug] ?? []
-  const configured = roleConfigs[slug] ?? defaults
-  return [...new Set<Permission>([...configured, ...defaults])]
+
+  if (roleConfigs[slug]) {
+    return [...roleConfigs[slug]]
+  }
+
+  const role = user.role
+  if (role && typeof role === 'object' && role.permissions?.length) {
+    return [...role.permissions]
+  }
+
+  return DEFAULT_ROLE_PERMISSIONS[slug] ?? []
 }
 
 export function hasPermission(
@@ -288,6 +291,16 @@ export function getAssignableRoles(
 
 export function getEditableRoles(actor: AuthUser, allRoles: RoleConfig[]): RoleConfig[] {
   return allRoles.filter((r) => canEditRolePermissions(actor, r))
+}
+
+export const PROTECTED_ROLE_SLUGS = ['super_admin', 'admin'] as const
+
+export function canDeleteRole(role: RoleConfig): boolean {
+  if (PROTECTED_ROLE_SLUGS.includes(role.slug as (typeof PROTECTED_ROLE_SLUGS)[number])) {
+    return false
+  }
+  if (role._id.startsWith('default-')) return false
+  return true
 }
 
 export function getFirstAllowedRoute(

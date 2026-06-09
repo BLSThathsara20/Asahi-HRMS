@@ -1,68 +1,79 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LogIn, LogOut, Search, CheckCircle2, Clock, MapPin } from 'lucide-react'
+import { LogIn, LogOut, CheckCircle2, Clock, MapPin, Sparkles } from 'lucide-react'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { EmployeeAvatar } from '../components/EmployeeAvatar'
-import { useEmployees } from '../hooks/useEmployees'
 import { useAttendance } from '../hooks/useAttendance'
+import { useAuth } from '../context/AuthContext'
 import { getDepartmentColor, getDepartmentLabel } from '../lib/types'
 import { usePermissions } from '../hooks/usePermissions'
-import { useAuth } from '../context/AuthContext'
 import { PermissionGate } from '../components/auth/ProtectedRoute'
 import { AttendanceExportPanel } from '../components/attendance/AttendanceExportPanel'
 import { GoogleSheetsStatus } from '../components/attendance/GoogleSheetsStatus'
 import { AttendanceLocationDisplay } from '../components/attendance/AttendanceLocationDisplay'
 import { captureCurrentLocation, toAttendanceLocation } from '../lib/geolocation'
+import { fetchEmployeeById } from '../lib/sanity'
 import { formatUKTime } from '../lib/uk'
+import type { Employee } from '../lib/types'
 
 export function Attendance() {
-  const { can } = usePermissions()
   const { user } = useAuth()
-  const canManage = can('attendance.manage')
-  const { employees, loading: empLoading } = useEmployees()
+  const { can } = usePermissions()
   const { todayRecords, actionLoading, error, signIn, signOut } = useAttendance()
-  const [search, setSearch] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [me, setMe] = useState<Employee | null>(null)
+  const [loadingMe, setLoadingMe] = useState(true)
   const [success, setSuccess] = useState<string | null>(null)
+  const [justAction, setJustAction] = useState<'in' | 'out' | null>(null)
 
-  const filtered = employees.filter((e) => {
-    const q = search.toLowerCase()
-    return (
-      e.firstName.toLowerCase().includes(q) ||
-      e.lastName.toLowerCase().includes(q) ||
-      e.employeeId.toLowerCase().includes(q) ||
-      getDepartmentLabel(e.department).toLowerCase().includes(q)
-    )
-  })
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    fetchEmployeeById(user._id)
+      .then((emp) => {
+        if (!cancelled) setMe(emp)
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMe(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
-  const getStatus = (employeeId: string) =>
-    todayRecords.find((r) => r.employee._id === employeeId)
+  const myStatus = user
+    ? todayRecords.find((r) => r.employee._id === user._id)
+    : undefined
+  const isSignedIn = myStatus?.status === 'signed_in'
 
-  const selected = employees.find((e) => e._id === selectedId)
-  const selectedStatus = selectedId ? getStatus(selectedId) : undefined
+  const showSuccess = (message: string, action: 'in' | 'out') => {
+    setSuccess(message)
+    setJustAction(action)
+    setTimeout(() => {
+      setSuccess(null)
+      setJustAction(null)
+    }, 3200)
+  }
 
   const handleSignIn = async () => {
-    if (!selectedId) return
+    if (!user) return
     try {
       const location = toAttendanceLocation(await captureCurrentLocation())
-      await signIn(selectedId, location)
-      setSuccess(`${selected?.firstName} signed in successfully`)
-      setTimeout(() => setSuccess(null), 3000)
+      await signIn(user._id, location)
+      showSuccess('You are signed in — have a great day!', 'in')
     } catch {
       /* error shown via hook */
     }
   }
 
   const handleSignOut = async () => {
-    if (!selectedStatus) return
+    if (!myStatus) return
     try {
       const location = toAttendanceLocation(await captureCurrentLocation())
-      await signOut(selectedStatus._id, location)
-      setSuccess(`${selected?.firstName} signed out successfully`)
-      setTimeout(() => setSuccess(null), 3000)
+      await signOut(myStatus._id, location)
+      showSuccess('You are signed out — see you next time!', 'out')
     } catch {
       /* error shown via hook */
     }
@@ -72,179 +83,203 @@ export function Attendance() {
     <div>
       <Header
         title="Sign In / Out"
-        subtitle="Clock in and out — UK time (Europe/London)"
+        subtitle="Tap below to clock yourself in or out"
       />
 
       <AnimatePresence>
         {success && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -12, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
             className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400"
           >
-            <CheckCircle2 size={16} />
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', delay: 0.1 }}
+            >
+              <CheckCircle2 size={16} />
+            </motion.span>
             {success}
           </motion.div>
         )}
       </AnimatePresence>
 
       {error && (
-        <div className="mb-4 rounded-xl bg-red-500/15 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mb-4 rounded-xl bg-red-500/15 px-4 py-3 text-sm text-red-600 dark:text-red-400"
+        >
           {error}
-        </div>
+        </motion.div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <GlassCard strong className="order-2 p-4 lg:order-1 lg:col-span-2">
-          <div className="relative mb-4">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-            />
-            <input
-              type="text"
-              placeholder="Search by name, ID or department..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-white/20 bg-white/10 py-2.5 pl-9 pr-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-asahi-blue/50"
-            />
-          </div>
+      <GlassCard
+        strong
+        className="relative mx-auto flex min-h-[420px] max-w-md flex-col items-center justify-center overflow-hidden p-8 sm:min-h-[480px]"
+      >
+        {/* Ambient glow */}
+        <motion.div
+          animate={{
+            opacity: isSignedIn ? 0.35 : 0.12,
+            scale: isSignedIn ? 1.15 : 1,
+          }}
+          transition={{ duration: 0.8 }}
+          className={`pointer-events-none absolute inset-0 ${
+            isSignedIn
+              ? 'bg-[radial-gradient(circle_at_50%_40%,rgba(5,150,105,0.25),transparent_65%)]'
+              : 'bg-[radial-gradient(circle_at_50%_40%,rgba(26,111,212,0.2),transparent_65%)]'
+          }`}
+        />
 
-          <div className="max-h-[50vh] space-y-2 overflow-y-auto lg:max-h-[480px]">
-            {empLoading ? (
-              <p className="text-sm text-[var(--text-muted)]">Loading people...</p>
-            ) : (
-              filtered.map((employee) => {
-                const status = getStatus(employee._id)
-                const isSelected = selectedId === employee._id
-
-                return (
-                  <motion.button
-                    key={employee._id}
-                    onClick={() => setSelectedId(employee._id)}
-                    whileTap={{ scale: 0.98 }}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition-all cursor-pointer border-0 min-h-[56px] ${
-                      isSelected
-                        ? 'bg-asahi-blue/20 ring-1 ring-asahi-blue/40'
-                        : 'bg-white/5 hover:bg-white/10'
-                    }`}
+        {loadingMe ? (
+          <motion.p
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            className="text-sm text-[var(--text-muted)]"
+          >
+            Loading your profile...
+          </motion.p>
+        ) : me ? (
+          <motion.div
+            layout
+            className="relative z-10 flex w-full flex-col items-center text-center"
+          >
+            {/* Avatar with status ring */}
+            <div className="relative mb-6">
+              {isSignedIn && (
+                <motion.span
+                  className="absolute inset-0 -m-3 rounded-full border-2 border-emerald-500/60"
+                  animate={{ scale: [1, 1.12, 1], opacity: [0.6, 0.2, 0.6] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              )}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={justAction ?? (isSignedIn ? 'in' : 'out')}
+                  initial={{ scale: 0.85, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 320, damping: 22 }}
+                >
+                  <EmployeeAvatar employee={me} size="lg" />
+                </motion.div>
+              </AnimatePresence>
+              <AnimatePresence>
+                {justAction && (
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 1.4, opacity: 0 }}
+                    className="absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg"
                   >
-                    <EmployeeAvatar employee={employee} />
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate text-sm font-medium text-[var(--text-primary)]">
-                        {employee.firstName} {employee.lastName}
-                      </p>
-                      <p className="text-xs text-[var(--text-muted)]">
-                        {employee.employeeId} · {getDepartmentLabel(employee.department)}
-                      </p>
-                    </div>
-                    {status && (
-                      <Badge color={status.status === 'signed_in' ? '#059669' : '#64748b'}>
-                        {status.status === 'signed_in' ? 'In' : 'Out'}
-                      </Badge>
-                    )}
-                  </motion.button>
-                )
-              })
-            )}
-          </div>
-        </GlassCard>
+                    <Sparkles size={14} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-        <GlassCard
-          strong
-          className="order-1 flex min-h-[280px] flex-col items-center justify-center p-6 sm:p-8 lg:order-2 lg:col-span-3 lg:min-h-[400px]"
-        >
-          {selected ? (
-            <motion.div
-              key={selected._id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex w-full max-w-sm flex-col items-center text-center"
+            <motion.h2
+              layout
+              className="text-xl font-semibold text-[var(--text-primary)]"
             >
-              <EmployeeAvatar employee={selected} size="lg" />
-              <h2 className="mt-4 text-xl font-semibold text-[var(--text-primary)]">
-                {selected.firstName} {selected.lastName}
-              </h2>
-              <p className="text-sm text-[var(--text-muted)]">{selected.jobTitle}</p>
-              <Badge color={getDepartmentColor(selected.department)} className="mt-2">
-                {getDepartmentLabel(selected.department)}
-              </Badge>
+              {me.firstName} {me.lastName}
+            </motion.h2>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">{me.jobTitle}</p>
+            <Badge color={getDepartmentColor(me.department)} className="mt-2">
+              {getDepartmentLabel(me.department)}
+            </Badge>
 
-              {selectedStatus && (
-                <div className="mt-6 flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                  <Clock size={14} />
-                  Signed in at {formatUKTime(selectedStatus.signInTime)}
-                </div>
-              )}
+            <motion.div
+              layout
+              className="mt-6 flex items-center gap-2 rounded-full px-4 py-2 text-sm"
+              animate={{
+                backgroundColor: isSignedIn
+                  ? 'rgba(5, 150, 105, 0.15)'
+                  : 'rgba(100, 116, 139, 0.12)',
+              }}
+            >
+              <motion.span
+                animate={{ scale: isSignedIn ? [1, 1.2, 1] : 1 }}
+                transition={{ duration: 1.5, repeat: isSignedIn ? Infinity : 0 }}
+              >
+                <Clock size={14} className={isSignedIn ? 'text-emerald-500' : 'text-[var(--text-muted)]'} />
+              </motion.span>
+              <span className={isSignedIn ? 'font-medium text-emerald-600 dark:text-emerald-400' : 'text-[var(--text-muted)]'}>
+                {isSignedIn && myStatus
+                  ? `On site since ${formatUKTime(myStatus.signInTime)}`
+                  : 'Not signed in today'}
+              </span>
+            </motion.div>
 
-              {selectedStatus && (
-                <AttendanceLocationDisplay record={selectedStatus} />
-              )}
+            {myStatus && <AttendanceLocationDisplay record={myStatus} />}
 
-              {canManage ? (
-                <div className="mt-8 flex w-full flex-col gap-3">
-                  <p className="flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)]">
-                    <MapPin size={12} />
-                    Location permission required to sign in or out
-                  </p>
-                  <div className="flex w-full gap-3">
-                  {!selectedStatus || selectedStatus.status === 'signed_out' ? (
+            <motion.div
+              layout
+              className="mt-8 w-full"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <p className="mb-4 flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)]">
+                <MapPin size={12} />
+                Location is used when you clock in or out
+              </p>
+
+              <AnimatePresence mode="wait">
+                {!isSignedIn ? (
+                  <motion.div
+                    key="sign-in"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+                  >
                     <Button
                       onClick={handleSignIn}
                       loading={actionLoading}
                       size="lg"
-                      className="flex-1"
-                      icon={<LogIn size={18} />}
+                      className="w-full"
+                      icon={<LogIn size={20} />}
                     >
                       Sign In
                     </Button>
-                  ) : (
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="sign-out"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+                  >
                     <Button
                       onClick={handleSignOut}
                       loading={actionLoading}
                       variant="secondary"
                       size="lg"
-                      className="flex-1"
-                      icon={<LogOut size={18} />}
+                      className="w-full ring-1 ring-emerald-500/30"
+                      icon={<LogOut size={20} />}
                     >
                       Sign Out
                     </Button>
-                  )}
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-8 text-sm text-[var(--text-muted)]">
-                  View only — you do not have permission to sign people in or out.
-                </p>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center"
-            >
-              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/10">
-                <LogIn size={32} className="text-[var(--text-muted)]" />
-              </div>
-              <p className="text-lg font-medium text-[var(--text-primary)]">
-                Select a person
-              </p>
-              <p className="mt-1 text-sm text-[var(--text-muted)]">
-                Choose from the list to sign in or out
-              </p>
-            </motion.div>
-          )}
-        </GlassCard>
-      </div>
+          </motion.div>
+        ) : (
+          <p className="text-sm text-[var(--text-muted)]">Could not load your profile.</p>
+        )}
+      </GlassCard>
 
-      {(user?.roleSlug === 'super_admin' || user?.roleSlug === 'admin') && (
-        <GoogleSheetsStatus />
-      )}
+      {can('attendance.manage') && <GoogleSheetsStatus />}
 
       <PermissionGate permission="attendance.export">
-        <AttendanceExportPanel selectedEmployeeId={selectedId} />
+        <AttendanceExportPanel selectedEmployeeId={user?._id ?? null} />
       </PermissionGate>
     </div>
   )
