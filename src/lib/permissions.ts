@@ -182,6 +182,12 @@ export function isSuperAdminEmployee(employee: { role?: { slug?: string } | null
   return employee.role?.slug === 'super_admin'
 }
 
+export function canViewAttendanceHistory(user: AuthUser | null): boolean {
+  if (!user) return false
+  const slug = getUserRoleSlug(user)
+  return slug === 'super_admin' || slug === 'admin' || slug === 'manager'
+}
+
 export function resolvePermissions(
   user: AuthUser,
   roleConfigs: RolePermissionMap = DEFAULT_ROLE_PERMISSIONS,

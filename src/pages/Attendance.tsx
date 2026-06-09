@@ -11,7 +11,7 @@ import { useAttendance } from '../hooks/useAttendance'
 import { useAuth } from '../context/AuthContext'
 import { getDepartmentColor, getDepartmentLabel } from '../lib/types'
 import { usePermissions } from '../hooks/usePermissions'
-import { isSuperAdmin } from '../lib/permissions'
+import { canViewAttendanceHistory, isSuperAdmin } from '../lib/permissions'
 import { AttendanceHistoryPanel } from '../components/attendance/AttendanceHistoryPanel'
 import { GoogleSheetsStatus } from '../components/attendance/GoogleSheetsStatus'
 import { AttendanceLocationDisplay } from '../components/attendance/AttendanceLocationDisplay'
@@ -360,7 +360,7 @@ export function Attendance() {
       </>
       )}
 
-      {user && (
+      {user && canViewAttendanceHistory(user) && (
         <AttendanceHistoryPanel
           userId={user._id}
           canManageTeam={can('attendance.manage')}
