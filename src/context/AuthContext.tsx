@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { clearSession, loadSession, saveSession } from '../lib/auth'
 import {
+  canDeletePerson,
   canEditRolePermissions,
   canEditUserPermissions,
   canManageUser,
@@ -17,6 +18,7 @@ import {
   resolvePermissions,
   type RolePermissionMap,
 } from '../lib/permissions'
+import { deleteEmployee } from '../lib/sanity'
 import {
   countLoginAccounts,
   fetchAuthUsers,
@@ -39,7 +41,7 @@ import {
   type CreateRoleInput,
 } from '../lib/sanity/roles'
 import { isSanityConfigured } from '../lib/sanity/client'
-import type { AuthUser, Permission, RoleConfig } from '../lib/types'
+import type { AuthUser, Employee, Permission, RoleConfig } from '../lib/types'
 
 interface AuthContextValue {
   user: AuthUser | null
@@ -54,6 +56,8 @@ interface AuthContextValue {
   resetUserActivation: (userId: string) => Promise<AuthUser>
   updateAuthUser: (userId: string, input: UpdateAuthUserInput) => Promise<AuthUser>
   deleteAuthUser: (userId: string) => Promise<void>
+  deletePerson: (employee: Employee) => Promise<void>
+  canDeletePerson: (employee: Employee) => boolean
   logout: () => void
   setupSuperAdmin: (input: Omit<RegisterAuthUserInput, 'roleId'>) => Promise<void>
   updatePermissions: (userId: string, permissions: Permission[]) => Promise<void>
@@ -168,6 +172,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await deleteAuthUser(userId)
   }
 
+  const removePerson = async (employee: Employee) => {
+    if (!user) throw new Error('Not signed in')
+    if (user._id === employee._id) {
+      throw new Error('You cannot delete your own account while signed in')
+    }
+    if (!canDeletePerson(user, employee, roleConfigs)) {
+      throw new Error('You do not have permission to remove this person')
+    }
+    await deleteEmployee(employee._id)
+  }
+
   const logout = () => {
     clearSession()
     setUser(null)
@@ -235,6 +250,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         resetUserActivation: resetActivation,
         updateAuthUser: updateUserAccount,
         deleteAuthUser: removeUser,
+        deletePerson: removePerson,
+        canDeletePerson: (employee) =>
+          user ? canDeletePerson(user, employee, roleConfigs) : false,
         logout,
         setupSuperAdmin,
         updatePermissions,

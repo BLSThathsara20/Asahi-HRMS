@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, UserPen, RotateCcw } from 'lucide-react'
+import { X, UserPen, RotateCcw, Trash2 } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 import { useDepartments } from '../../hooks/useDepartments'
 import { getRoleLabel } from '../../lib/auth'
 import { getPayRateLabel } from '../../lib/payroll'
@@ -19,10 +20,19 @@ interface EmployeeEditorProps {
 }
 
 export function EmployeeEditor({ employee, onClose, onSaved }: EmployeeEditorProps) {
-  const { assignableRoles, resetUserActivation, can, canManageUserTarget } = useAuth()
+  const {
+    assignableRoles,
+    resetUserActivation,
+    can,
+    canManageUserTarget,
+    deletePerson,
+    canDeletePerson,
+  } = useAuth()
+  const { success, error: notifyError } = useNotifications()
   const { departments } = useDepartments()
   const [loading, setLoading] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     firstName: employee.firstName,
@@ -306,6 +316,39 @@ export function EmployeeEditor({ employee, onClose, onSaved }: EmployeeEditorPro
               <div className="rounded-xl bg-red-500/15 px-4 py-3 text-sm text-red-600 dark:text-red-400">
                 {error}
               </div>
+            )}
+
+            {canDeletePerson(employee) && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (
+                    !confirm(
+                      `Remove ${employee.firstName} ${employee.lastName}? They will lose access immediately.`,
+                    )
+                  )
+                    return
+                  setDeleting(true)
+                  setError(null)
+                  try {
+                    await deletePerson(employee)
+                    success('Person removed', `${employee.firstName} ${employee.lastName}`)
+                    onSaved()
+                    onClose()
+                  } catch (err) {
+                    const msg = err instanceof Error ? err.message : 'Delete failed'
+                    setError(msg)
+                    notifyError('Could not remove person', msg)
+                  } finally {
+                    setDeleting(false)
+                  }
+                }}
+                disabled={deleting}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500 hover:bg-red-500/15 cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 size={16} />
+                {deleting ? 'Removing...' : 'Remove person'}
+              </button>
             )}
 
             {can('users.reset_activation') &&

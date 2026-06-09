@@ -4,6 +4,7 @@ import { LogIn, Eye, EyeOff, Phone, KeyRound, ArrowLeft } from 'lucide-react'
 import { AuthLayout } from '../components/auth/AuthLayout'
 import { Button } from '../components/ui/Button'
 import { useAuth } from '../context/AuthContext'
+import { useNotifications } from '../context/NotificationContext'
 import { checkLoginStatus, verifyPhoneForSetup } from '../lib/sanity/auth'
 
 const inputClass =
@@ -13,6 +14,7 @@ type Step = 'email' | 'password' | 'setup-phone' | 'setup-password'
 
 export function Login() {
   const { login, completeSetup } = useAuth()
+  const { error: notifyError } = useNotifications()
   const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState('')
   const [firstName, setFirstName] = useState('')
@@ -59,7 +61,9 @@ export function Login() {
         setStep('password')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not check account')
+      const msg = err instanceof Error ? err.message : 'Could not check account'
+      setError(msg)
+      notifyError('Sign in', msg)
     } finally {
       setLoading(false)
     }
@@ -73,7 +77,9 @@ export function Login() {
     try {
       await login(email, password)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign in failed')
+      const msg = err instanceof Error ? err.message : 'Sign in failed'
+      setError(msg)
+      notifyError('Sign in failed', msg)
     } finally {
       setLoading(false)
     }
@@ -114,7 +120,9 @@ export function Login() {
     try {
       await completeSetup(email, phone, newPassword)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Setup failed')
+      const msg = err instanceof Error ? err.message : 'Setup failed'
+      setError(msg)
+      notifyError('Account setup failed', msg)
     } finally {
       setLoading(false)
     }

@@ -6,6 +6,7 @@ import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { createEmployee, generateNextEmployeeId } from '../lib/sanity'
 import { useAuth } from '../context/AuthContext'
+import { useNotifications } from '../context/NotificationContext'
 import { useDepartments } from '../hooks/useDepartments'
 import { getPayRateLabel } from '../lib/payroll'
 import type { EmploymentType, PaymentMethod } from '../lib/types'
@@ -15,6 +16,7 @@ const inputClass =
 
 export function RegisterEmployee() {
   const { assignableRoles } = useAuth()
+  const { success: notifySuccess, error: notifyError, warning } = useNotifications()
   const { departments, loading: deptLoading } = useDepartments()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -65,36 +67,41 @@ export function RegisterEmployee() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    const showValidation = (message: string) => {
+      setError(message)
+      warning('Check the form', message)
+    }
+
     if (!form.departmentId) {
-      setError('Please select a department')
+      showValidation('Please select a department')
       return
     }
 
     if (!form.paymentMethod) {
-      setError('Please select a payment method')
+      showValidation('Please select a payment method')
       return
     }
 
     if (!form.phone.trim()) {
-      setError('Phone is required — used for first-login verification')
+      showValidation('Phone is required — used for first-login verification')
       return
     }
 
     if (!form.roleId) {
-      setError('Please select an access role')
+      showValidation('Please select an access role')
       return
     }
 
     const payRate = parseFloat(form.payRate)
     if (isNaN(payRate) || payRate < 0) {
-      setError('Please enter a valid pay rate')
+      showValidation('Please enter a valid pay rate')
       return
     }
 
     if (form.employmentType === 'part_time' && form.paymentMethod === 'monthly') {
       const hours = parseFloat(form.hoursPerWeek)
       if (isNaN(hours) || hours <= 0) {
-        setError('Part-time staff need contracted hours per week')
+        showValidation('Part-time staff need contracted hours per week')
         return
       }
     }
@@ -126,6 +133,10 @@ export function RegisterEmployee() {
       })
       setRegisteredId(employee.employeeId)
       setSuccess(true)
+      notifySuccess(
+        'Person registered',
+        `${employee.firstName} ${employee.lastName} can sign in and set their password.`,
+      )
       setForm({
         firstName: '',
         lastName: '',
@@ -144,7 +155,9 @@ export function RegisterEmployee() {
       })
       await loadNextId()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed')
+      const msg = err instanceof Error ? err.message : 'Registration failed'
+      setError(msg)
+      notifyError('Registration failed', msg)
     } finally {
       setLoading(false)
     }

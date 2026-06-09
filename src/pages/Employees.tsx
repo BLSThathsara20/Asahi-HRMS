@@ -7,7 +7,8 @@ import { Badge } from '../components/ui/Badge'
 import { EmployeeAvatar } from '../components/EmployeeAvatar'
 import { EmployeePayModal } from '../components/employees/EmployeePayModal'
 import { EmployeeEditor } from '../components/employees/EmployeeEditor'
-import { deleteEmployee } from '../lib/sanity'
+import { useAuth } from '../context/AuthContext'
+import { useNotifications } from '../context/NotificationContext'
 import { useEmployees } from '../hooks/useEmployees'
 import { useDepartments } from '../hooks/useDepartments'
 import { usePermissions } from '../hooks/usePermissions'
@@ -23,6 +24,8 @@ import type { Employee } from '../lib/types'
 
 export function Employees() {
   const { can } = usePermissions()
+  const { deletePerson, canDeletePerson, user } = useAuth()
+  const { success, error } = useNotifications()
   const { employees, loading, reload } = useEmployees()
   const { departments } = useDepartments()
   const [search, setSearch] = useState('')
@@ -189,19 +192,28 @@ export function Employees() {
                           {isPayConfigured(employee) ? 'Update pay' : 'Set pay rate'}
                         </button>
                       )}
-                      {can('employees.delete') && (
+                      {canDeletePerson(employee) && (
                         <button
                           onClick={async () => {
                             if (
                               !confirm(
-                                `Remove ${employee.firstName} ${employee.lastName} from the active list?`,
+                                `Remove ${employee.firstName} ${employee.lastName} from Asahi Motors London?`,
                               )
                             )
                               return
                             setDeletingId(employee._id)
                             try {
-                              await deleteEmployee(employee._id)
+                              await deletePerson(employee)
+                              success(
+                                'Person removed',
+                                `${employee.firstName} ${employee.lastName} is no longer active.`,
+                              )
                               reload()
+                            } catch (e) {
+                              error(
+                                'Could not remove person',
+                                e instanceof Error ? e.message : 'Delete failed',
+                              )
                             } finally {
                               setDeletingId(null)
                             }
@@ -212,6 +224,11 @@ export function Employees() {
                           <Trash2 size={12} />
                           {deletingId === employee._id ? 'Deleting...' : 'Delete'}
                         </button>
+                      )}
+                      {user?._id === employee._id && can('employees.delete') && (
+                        <span className="text-xs text-[var(--text-muted)]">
+                          Cannot delete your own account
+                        </span>
                       )}
                     </div>
                   </div>

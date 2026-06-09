@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
+import { NotificationProvider } from './context/NotificationContext'
+import { NotificationToast } from './components/ui/NotificationToast'
 import { AppLayout } from './components/layout/AppLayout'
 import { ProtectedRoute, PublicOnlyRoute, PermissionRoute } from './components/auth/ProtectedRoute'
 import { Dashboard } from './pages/Dashboard'
@@ -15,8 +17,10 @@ import { Finance } from './pages/Finance'
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter
+      <NotificationProvider>
+        <AuthProvider>
+          <NotificationToast />
+          <BrowserRouter
           basename={import.meta.env.BASE_URL.replace(/\/$/, '') || undefined}
         >
           <Routes>
@@ -50,8 +54,9 @@ export default function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+          </BrowserRouter>
+        </AuthProvider>
+      </NotificationProvider>
     </ThemeProvider>
   )
 }

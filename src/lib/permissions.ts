@@ -1,4 +1,4 @@
-import type { AuthUser, Permission, RoleConfig } from './types'
+import type { AuthUser, Employee, Permission, RoleConfig } from './types'
 
 export const ALL_PERMISSIONS: Permission[] = [
   'dashboard.view',
@@ -197,6 +197,7 @@ export function hasPermission(
   roleConfigs: RolePermissionMap = DEFAULT_ROLE_PERMISSIONS,
 ): boolean {
   if (!user) return false
+  if (isSuperAdmin(user)) return true
   return resolvePermissions(user, roleConfigs).includes(permission)
 }
 
@@ -228,6 +229,18 @@ export function canEditUserPermissions(
   return canManageUser(actor, target, roleConfigs)
 }
 
+export function employeeToAuthTarget(employee: Employee): AuthUser {
+  return {
+    _id: employee._id,
+    email: employee.email,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    role: employee.role ?? null,
+    roleSlug: employee.role?.slug ?? 'manager',
+    isActive: employee.isActive,
+  }
+}
+
 export function canManageUser(
   actor: AuthUser,
   target: AuthUser,
@@ -236,10 +249,19 @@ export function canManageUser(
   if (actor._id === target._id) return false
   if (isSuperAdmin(actor)) return true
   if (getUserRoleSlug(actor) === 'admin' && !isSuperAdmin(target)) return true
-  return (
-    getUserRoleRank(actor) > getUserRoleRank(target) &&
-    getUserRoleSlug(actor) === getUserRoleSlug(target)
-  )
+  return getUserRoleRank(actor) > getUserRoleRank(target)
+}
+
+export function canDeletePerson(
+  actor: AuthUser | null,
+  target: Employee,
+  roleConfigs?: RolePermissionMap,
+): boolean {
+  if (!actor) return false
+  if (actor._id === target._id) return false
+  if (!hasPermission(actor, 'employees.delete', roleConfigs)) return false
+  if (isSuperAdmin(actor)) return true
+  return canManageUser(actor, employeeToAuthTarget(target), roleConfigs)
 }
 
 export function getAssignableRoles(

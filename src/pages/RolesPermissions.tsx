@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/Badge'
 import { PermissionChecklist } from '../components/permissions/PermissionChecklist'
 import { AccessLevelEditor } from '../components/users/AccessLevelEditor'
 import { useAuth } from '../context/AuthContext'
+import { useNotifications } from '../context/NotificationContext'
 import { fetchAuthUsers } from '../lib/sanity/auth'
 import { getRoleColor, getRoleLabel } from '../lib/auth'
 import {
@@ -35,6 +36,7 @@ export function RolesPermissions() {
     canEditPermissionsFor,
     refreshUser,
   } = useAuth()
+  const { success: notifySuccess, error: notifyError } = useNotifications()
 
   const [tab, setTab] = useState<Tab>('roles')
   const [selectedRoleId, setSelectedRoleId] = useState('')
@@ -89,9 +91,12 @@ export function RolesPermissions() {
     try {
       await updateRolePermissions(selectedRole._id, rolePerms)
       setRoleSuccess(true)
+      notifySuccess('Role saved', `${selectedRole.name} permissions updated`)
       setTimeout(() => setRoleSuccess(false), 3000)
     } catch (e) {
-      setRoleError(e instanceof Error ? e.message : 'Failed to save role permissions')
+      const msg = e instanceof Error ? e.message : 'Failed to save role permissions'
+      setRoleError(msg)
+      notifyError('Could not save role', msg)
     } finally {
       setSavingRole(false)
     }
@@ -105,8 +110,11 @@ export function RolesPermissions() {
       const created = await createRole({ name: newRoleName.trim() })
       setNewRoleName('')
       setSelectedRoleId(created._id)
+      notifySuccess('Role created', created.name)
     } catch (e) {
-      setRoleError(e instanceof Error ? e.message : 'Failed to create role')
+      const msg = e instanceof Error ? e.message : 'Failed to create role'
+      setRoleError(msg)
+      notifyError('Could not create role', msg)
     } finally {
       setCreatingRole(false)
     }
@@ -118,8 +126,11 @@ export function RolesPermissions() {
     try {
       await removeRole(role._id)
       if (selectedRoleId === role._id) setSelectedRoleId('')
+      notifySuccess('Role deleted', role.name)
     } catch (e) {
-      setRoleError(e instanceof Error ? e.message : 'Failed to delete role')
+      const msg = e instanceof Error ? e.message : 'Failed to delete role'
+      setRoleError(msg)
+      notifyError('Could not delete role', msg)
     }
   }
 
