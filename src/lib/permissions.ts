@@ -135,6 +135,14 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ],
 }
 
+/** Permissions auto-enabled when creating a new custom role */
+export const DEFAULT_NEW_ROLE_PERMISSIONS: Permission[] = [
+  'dashboard.view',
+  'dashboard.attendance',
+  'attendance.view',
+  'attendance.manage',
+]
+
 export const ROUTE_PERMISSIONS: Record<string, Permission> = {
   '/': 'dashboard.view',
   '/attendance': 'attendance.view',
@@ -252,6 +260,10 @@ export function canManageUser(
   return getUserRoleRank(actor) > getUserRoleRank(target)
 }
 
+export function isEmployeeSuperAdmin(employee: Employee): boolean {
+  return isSuperAdmin(employeeToAuthTarget(employee))
+}
+
 export function canDeletePerson(
   actor: AuthUser | null,
   target: Employee,
@@ -259,6 +271,7 @@ export function canDeletePerson(
 ): boolean {
   if (!actor) return false
   if (actor._id === target._id) return false
+  if (isEmployeeSuperAdmin(target)) return false
   if (!hasPermission(actor, 'employees.delete', roleConfigs)) return false
   if (isSuperAdmin(actor)) return true
   return canManageUser(actor, employeeToAuthTarget(target), roleConfigs)

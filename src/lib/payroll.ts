@@ -7,7 +7,7 @@ import type {
   PayrollLine,
   PayrollStatus,
 } from './types'
-import { formatGBP, formatUKDate } from './uk'
+import { formatGBP, formatUKDate, getUKToday } from './uk'
 
 export const UK_FULL_TIME_HOURS = 37.5
 
@@ -90,6 +90,113 @@ export function isPayConfigured(employee: Employee): boolean {
   )
 }
 
+export function getPayrollEffectiveEnd(periodStart: string, periodEnd: string): string {
+  const today = getUKToday()
+  if (today < periodStart) return periodStart
+  if (today > periodEnd) return periodEnd
+  return today
+}
+
+export function countDaysAttended(
+  attendance: AttendanceRecord[],
+  employeeId: string,
+  periodStart: string,
+  periodEnd: string,
+): number {
+  return new Set(
+    attendance
+      .filter(
+        (a) =>
+          a.employee._id === employeeId &&
+          a.date >= periodStart &&
+          a.date <= periodEnd,
+      )
+      .map((a) => a.date),
+  ).size
+}
+
+export interface EmployeeEarnings {
+  grossPay: number
+  hoursWorked: number
+  daysWorked: number
+  daysAttended: number
+  configured: boolean
+  effectiveEnd: string
+  isMonthToDate: boolean
+}
+
+export function calculateEmployeeEarningsToDate(
+  employee: Employee,
+  attendance: AttendanceRecord[],
+  periodStart: string,
+  periodEnd: string,
+): EmployeeEarnings {
+  const effectiveEnd = getPayrollEffectiveEnd(periodStart, periodEnd)
+  const isMonthToDate = effectiveEnd < periodEnd
+
+  if (!isPayConfigured(employee)) {
+    return {
+      grossPay: 0,
+      hoursWorked: 0,
+      daysWorked: 0,
+      daysAttended: countDaysAttended(attendance, employee._id, periodStart, effectiveEnd),
+      configured: false,
+      effectiveEnd,
+      isMonthToDate,
+    }
+  }
+
+  const periodRecords = attendance.filter(
+    (a) =>
+      a.employee._id === employee._id &&
+      a.date >= periodStart &&
+      a.date <= effectiveEnd &&
+      a.status === 'signed_out',
+  )
+
+  const hoursWorked = periodRecords.reduce((sum, r) => sum + hoursFromRecord(r), 0)
+  const daysWorked = new Set(periodRecords.map((r) => r.date)).size
+  const daysAttended = countDaysAttended(attendance, employee._id, periodStart, effectiveEnd)
+
+  let grossPay = 0
+  const pay = getEffectivePayForDate(employee, periodStart)
+
+  if (pay?.paymentMethod === 'monthly') {
+    let monthly = pay.payRate
+    if (pay.employmentType === 'part_time' && pay.hoursPerWeek) {
+      monthly = pay.payRate * (pay.hoursPerWeek / UK_FULL_TIME_HOURS)
+    }
+    if (isMonthToDate) {
+      const [year, month] = periodStart.split('-').map(Number)
+      const totalDays = new Date(year, month, 0).getDate()
+      const elapsed = Number(effectiveEnd.split('-')[2])
+      grossPay = monthly * (elapsed / totalDays)
+    } else {
+      grossPay = monthly
+    }
+  } else {
+    for (const record of periodRecords) {
+      const recordPay = getEffectivePayForDate(employee, record.date)
+      if (!recordPay) continue
+      if (recordPay.paymentMethod === 'hourly') {
+        grossPay += hoursFromRecord(record) * recordPay.payRate
+      } else if (recordPay.paymentMethod === 'daily') {
+        grossPay += recordPay.payRate
+      }
+    }
+  }
+
+  return {
+    grossPay: Math.round(grossPay * 100) / 100,
+    hoursWorked: Math.round(hoursWorked * 100) / 100,
+    daysWorked,
+    daysAttended,
+    configured: true,
+    effectiveEnd,
+    isMonthToDate,
+  }
+}
+
 export function calculateEmployeeGross(
   employee: Employee,
   attendance: AttendanceRecord[],
@@ -145,7 +252,15 @@ export function buildPayrollLines(
   attendance: AttendanceRecord[],
   periodStart: string,
   periodEnd: string,
-  entries: { _id: string; employeeId: string; status: PayrollStatus; paidAt?: string }[] = [],
+  entries: {
+    _id: string
+    employeeId: string
+    status: PayrollStatus
+    paidAt?: string
+    paidAmount?: number
+    paidByName?: string
+    paymentReference?: string
+  }[] = [],
 ): PayrollLine[] {
   const entryByEmployee = new Map(entries.map((e) => [e.employeeId, e]))
 
@@ -164,6 +279,9 @@ export function buildPayrollLines(
       entryId: entry?._id,
       status: entry?.status ?? 'pending',
       paidAt: entry?.paidAt,
+      paidAmount: entry?.paidAmount,
+      paidByName: entry?.paidByName,
+      paymentReference: entry?.paymentReference,
       configured: calc.configured,
     }
   })

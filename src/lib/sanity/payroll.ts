@@ -1,6 +1,13 @@
 import { MOCK_ATTENDANCE } from '../mockData'
 import { buildPayrollLines } from '../payroll'
-import type { AttendanceRecord, Employee, PayrollEntry, PayrollLine, PayrollStatus } from '../types'
+import type {
+  AttendanceRecord,
+  Employee,
+  PayrollEntry,
+  PayrollLine,
+  PayrollPaymentInput,
+  PayrollStatus,
+} from '../types'
 import { getSanityClient, isSanityConfigured } from './client'
 
 const DEPT_FIELDS = `_id, name, "slug": slug.current, color, isActive`
@@ -36,6 +43,9 @@ const PAYROLL_FIELDS = `
   payRate,
   status,
   paidAt,
+  paidAmount,
+  paidByName,
+  paymentReference,
   notes,
   updatedAt,
   "employee": employee->{ ${EMPLOYEE_FIELDS} }
@@ -104,6 +114,9 @@ export async function generatePayroll(
       employeeId: e.employee._id,
       status: e.status,
       paidAt: e.paidAt,
+      paidAmount: e.paidAmount,
+      paidByName: e.paidByName,
+      paymentReference: e.paymentReference,
     })),
   )
 
@@ -192,17 +205,20 @@ export async function generatePayroll(
   return lines
 }
 
-export async function updatePayrollStatus(
+export async function recordPayrollPayment(
   entryId: string,
-  status: PayrollStatus,
+  payment: PayrollPaymentInput,
 ): Promise<void> {
   const now = new Date().toISOString()
 
   if (!isSanityConfigured) {
     const entry = mockPayrollEntries.find((e) => e._id === entryId)
     if (entry) {
-      entry.status = status
-      entry.paidAt = status === 'paid' ? now : undefined
+      entry.status = 'paid'
+      entry.paidAt = payment.paidAt
+      entry.paidAmount = payment.paidAmount
+      entry.paidByName = payment.paidByName
+      entry.paymentReference = payment.paymentReference
       entry.updatedAt = now
     }
     return
@@ -211,11 +227,59 @@ export async function updatePayrollStatus(
   await getSanityClient()
     .patch(entryId)
     .set({
-      status,
-      paidAt: status === 'paid' ? now : null,
+      status: 'paid',
+      paidAt: payment.paidAt,
+      paidAmount: payment.paidAmount,
+      paidByName: payment.paidByName,
+      paymentReference: payment.paymentReference ?? null,
       updatedAt: now,
     })
     .commit()
+}
+
+export async function markPayrollPending(entryId: string): Promise<void> {
+  const now = new Date().toISOString()
+
+  if (!isSanityConfigured) {
+    const entry = mockPayrollEntries.find((e) => e._id === entryId)
+    if (entry) {
+      entry.status = 'pending'
+      entry.paidAt = undefined
+      entry.paidAmount = undefined
+      entry.paidByName = undefined
+      entry.paymentReference = undefined
+      entry.updatedAt = now
+    }
+    return
+  }
+
+  await getSanityClient()
+    .patch(entryId)
+    .set({
+      status: 'pending',
+      paidAt: null,
+      paidAmount: null,
+      paidByName: null,
+      paymentReference: null,
+      updatedAt: now,
+    })
+    .commit()
+}
+
+/** @deprecated Use recordPayrollPayment or markPayrollPending */
+export async function updatePayrollStatus(
+  entryId: string,
+  status: PayrollStatus,
+): Promise<void> {
+  if (status === 'paid') {
+    await recordPayrollPayment(entryId, {
+      paidAt: new Date().toISOString(),
+      paidAmount: 0,
+      paidByName: 'System',
+    })
+    return
+  }
+  await markPayrollPending(entryId)
 }
 
 export async function loadPayrollPeriod(
@@ -238,6 +302,17 @@ export async function loadPayrollPeriod(
       employeeId: e.employee._id,
       status: e.status,
       paidAt: e.paidAt,
+      paidAmount: e.paidAmount,
+      paidByName: e.paidByName,
+      paymentReference: e.paymentReference,
     })),
   )
+}
+
+export async function recordBulkPayrollPayments(
+  payments: { entryId: string; payment: PayrollPaymentInput }[],
+): Promise<void> {
+  for (const { entryId, payment } of payments) {
+    await recordPayrollPayment(entryId, payment)
+  }
 }

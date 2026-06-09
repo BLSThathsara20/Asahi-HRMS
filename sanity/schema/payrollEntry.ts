@@ -72,6 +72,24 @@ export default {
       type: 'datetime',
     },
     {
+      name: 'paidAmount',
+      title: 'Paid Amount',
+      type: 'number',
+      description: 'Amount actually paid (usually matches gross pay)',
+    },
+    {
+      name: 'paidByName',
+      title: 'Recorded By',
+      type: 'string',
+      description: 'Name of the person who marked this payment',
+    },
+    {
+      name: 'paymentReference',
+      title: 'Payment Reference',
+      type: 'string',
+      description: 'Bank transfer reference or payment note',
+    },
+    {
       name: 'notes',
       title: 'Notes',
       type: 'text',

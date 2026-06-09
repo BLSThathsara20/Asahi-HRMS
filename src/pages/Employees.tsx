@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Search, PoundSterling, History, Pencil, Trash2 } from 'lucide-react'
+import { Search, PoundSterling, History, Pencil, Trash2, UserRound } from 'lucide-react'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Badge } from '../components/ui/Badge'
 import { EmployeeAvatar } from '../components/EmployeeAvatar'
 import { EmployeePayModal } from '../components/employees/EmployeePayModal'
 import { EmployeeEditor } from '../components/employees/EmployeeEditor'
+import { PersonProfileModal } from '../components/employees/PersonProfileModal'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
 import { useEmployees } from '../hooks/useEmployees'
@@ -32,6 +33,7 @@ export function Employees() {
   const [deptFilter, setDeptFilter] = useState<string>('all')
   const [payEmployee, setPayEmployee] = useState<Employee | null>(null)
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null)
+  const [viewPerson, setViewPerson] = useState<Employee | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const filtered = employees.filter((e) => {
@@ -174,6 +176,15 @@ export function Employees() {
                       </p>
                     )}
                     <div className="mt-2 flex flex-wrap gap-3">
+                      {can('employees.view') && (
+                        <button
+                          onClick={() => setViewPerson(employee)}
+                          className="flex items-center gap-1.5 text-xs text-asahi-blue hover:underline cursor-pointer border-0 bg-transparent p-0 min-h-[44px]"
+                        >
+                          <UserRound size={12} />
+                          View profile
+                        </button>
+                      )}
                       {can('employees.edit') && (
                         <button
                           onClick={() => setEditEmployee(employee)}
@@ -262,6 +273,10 @@ export function Employees() {
           onClose={() => setEditEmployee(null)}
           onSaved={reload}
         />
+      )}
+
+      {viewPerson && (
+        <PersonProfileModal person={viewPerson} onClose={() => setViewPerson(null)} />
       )}
     </div>
   )

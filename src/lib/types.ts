@@ -127,8 +127,18 @@ export interface PayrollEntry {
   payRate?: number
   status: PayrollStatus
   paidAt?: string
+  paidAmount?: number
+  paidByName?: string
+  paymentReference?: string
   notes?: string
   updatedAt?: string
+}
+
+export interface PayrollPaymentInput {
+  paidAt: string
+  paidAmount: number
+  paidByName: string
+  paymentReference?: string
 }
 
 export interface PayrollLine {
@@ -142,6 +152,9 @@ export interface PayrollLine {
   entryId?: string
   status: PayrollStatus
   paidAt?: string
+  paidAmount?: number
+  paidByName?: string
+  paymentReference?: string
   configured: boolean
 }
 

@@ -1,5 +1,9 @@
 import { getSanityClient, isSanityConfigured } from './client'
-import { ALL_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS } from '../permissions'
+import {
+  ALL_PERMISSIONS,
+  DEFAULT_NEW_ROLE_PERMISSIONS,
+  DEFAULT_ROLE_PERMISSIONS,
+} from '../permissions'
 import type { Permission, RoleConfig } from '../types'
 
 export const SYSTEM_ROLE_SEEDS: Omit<RoleConfig, '_id' | 'updatedAt'>[] = [
@@ -137,7 +141,7 @@ export async function createRole(input: CreateRoleInput): Promise<RoleConfig> {
       color: input.color ?? '#64748b',
       rank: input.rank ?? 5,
       isSystem: false,
-      permissions: input.permissions ?? [],
+      permissions: input.permissions ?? [...DEFAULT_NEW_ROLE_PERMISSIONS],
       updatedAt: new Date().toISOString(),
     }
     mockRoleConfigs.push(created)
@@ -158,7 +162,7 @@ export async function createRole(input: CreateRoleInput): Promise<RoleConfig> {
     color: input.color ?? '#64748b',
     rank: input.rank ?? 5,
     isSystem: false,
-    permissions: input.permissions ?? [],
+    permissions: input.permissions ?? [...DEFAULT_NEW_ROLE_PERMISSIONS],
     updatedAt: now,
   })
 

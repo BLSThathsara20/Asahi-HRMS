@@ -7,15 +7,24 @@ import {
   Clock,
   AlertCircle,
   RefreshCw,
+  CalendarDays,
+  Banknote,
 } from 'lucide-react'
 import { Header } from '../components/layout/Header'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { PermissionGate } from '../components/auth/ProtectedRoute'
+import { EmployeeSalaryCalculator } from '../components/finance/EmployeeSalaryCalculator'
+import { MarkPaidModal, PaymentRecordSummary } from '../components/finance/MarkPaidModal'
 import { usePayroll } from '../hooks/usePayroll'
 import { useAuth } from '../context/AuthContext'
-import { updatePayrollStatus } from '../lib/sanity/payroll'
+import { useNotifications } from '../context/NotificationContext'
+import {
+  markPayrollPending,
+  recordBulkPayrollPayments,
+  recordPayrollPayment,
+} from '../lib/sanity/payroll'
 import {
   EMPLOYMENT_TYPE_LABELS,
   formatPaySummary,
@@ -27,52 +36,135 @@ import {
   formatUKMonth,
   getCurrentUKYearMonth,
   getUKMonthRange,
+  getUKToday,
 } from '../lib/uk'
+import type { PayrollLine } from '../lib/types'
 
 export function Finance() {
-  const { can } = useAuth()
+  const { can, user } = useAuth()
+  const { success, error: notifyError } = useNotifications()
   const [yearMonth, setYearMonth] = useState(getCurrentUKYearMonth())
   const { start, end } = getUKMonthRange(yearMonth)
   const { lines, loading, generating, error, runPayroll, reload } = usePayroll(start, end)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [bulkPaying, setBulkPaying] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [markPaidLine, setMarkPaidLine] = useState<PayrollLine | null>(null)
+
+  const recordedBy = user ? `${user.firstName} ${user.lastName}` : 'Unknown'
+  const periodLabel = formatUKMonth(yearMonth)
 
   const stats = useMemo(() => {
     const configured = lines.filter((l) => l.configured)
+    const calculated = configured.filter((l) => l.entryId)
     const total = configured.reduce((s, l) => s + l.grossPay, 0)
     const paid = configured
       .filter((l) => l.status === 'paid')
-      .reduce((s, l) => s + l.grossPay, 0)
+      .reduce((s, l) => s + (l.paidAmount ?? l.grossPay), 0)
     const pending = total - paid
+    const pendingLines = calculated.filter((l) => l.status === 'pending')
     return {
       total,
       paid,
       pending,
       count: configured.length,
+      calculatedCount: calculated.length,
       paidCount: configured.filter((l) => l.status === 'paid').length,
+      pendingLines,
+      pendingTotal: pendingLines.reduce((s, l) => s + l.grossPay, 0),
     }
   }, [lines])
 
-  const handleTogglePaid = async (entryId: string, current: 'pending' | 'paid') => {
-    if (!can('finance.mark_paid')) return
-    setUpdatingId(entryId)
+  const handleRecordPayment = async (
+    line: PayrollLine,
+    input: { paidAt: string; paidAmount: number; paymentReference?: string },
+  ) => {
+    if (!line.entryId || !can('finance.mark_paid')) return
+    setUpdatingId(line.entryId)
     setActionError(null)
     try {
-      const next = current === 'paid' ? 'pending' : 'paid'
-      await updatePayrollStatus(entryId, next)
+      await recordPayrollPayment(line.entryId, {
+        ...input,
+        paidByName: recordedBy,
+      })
       await reload()
+      success(
+        'Payment recorded',
+        `${line.employee.firstName} ${line.employee.lastName} — ${formatGBP(input.paidAmount)}`,
+      )
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Failed to update status')
+      const message = e instanceof Error ? e.message : 'Failed to record payment'
+      setActionError(message)
+      notifyError('Payment failed', message)
+      throw e
     } finally {
       setUpdatingId(null)
     }
   }
 
+  const handleMarkPending = async (line: PayrollLine) => {
+    if (!line.entryId || !can('finance.mark_paid')) return
+    if (!window.confirm('Remove payment record and mark this salary as pending again?')) return
+
+    setUpdatingId(line.entryId)
+    setActionError(null)
+    try {
+      await markPayrollPending(line.entryId)
+      await reload()
+      success('Marked as pending', `${line.employee.firstName} ${line.employee.lastName}`)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to update status'
+      setActionError(message)
+      notifyError('Update failed', message)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  const handleMarkAllPaid = async () => {
+    if (!can('finance.mark_paid') || stats.pendingLines.length === 0) return
+
+    const confirmed = window.confirm(
+      `Record payment for ${stats.pendingLines.length} pending salaries totalling ${formatGBP(stats.pendingTotal)} for ${periodLabel}?`,
+    )
+    if (!confirmed) return
+
+    setBulkPaying(true)
+    setActionError(null)
+    const paidAt = new Date(`${getUKToday()}T12:00:00`).toISOString()
+
+    try {
+      await recordBulkPayrollPayments(
+        stats.pendingLines.map((line) => ({
+          entryId: line.entryId!,
+          payment: {
+            paidAt,
+            paidAmount: line.grossPay,
+            paidByName: recordedBy,
+          },
+        })),
+      )
+      await reload()
+      success(
+        'All payments recorded',
+        `${stats.pendingLines.length} salaries marked as paid for ${periodLabel}`,
+      )
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to mark all as paid'
+      setActionError(message)
+      notifyError('Bulk payment failed', message)
+    } finally {
+      setBulkPaying(false)
+    }
+  }
+
+  const hasCalculatedEntries = stats.calculatedCount > 0
+
   return (
     <div>
       <Header
         title="Finance & Payroll"
-        subtitle="UK salary calculator — hourly, daily & monthly pay from attendance"
+        subtitle="Calculate salaries from attendance, then record payments when paid"
       />
 
       <GlassCard strong className="mb-4 p-4">
@@ -88,21 +180,44 @@ export function Finance() {
               className="rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-asahi-blue/50"
             />
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              {formatUKMonth(yearMonth)} · {formatUKDate(start)} – {formatUKDate(end)}
+              {periodLabel} · {formatUKDate(start)} – {formatUKDate(end)}
             </p>
           </div>
-          <PermissionGate permission="finance.manage">
-            <Button
-              onClick={runPayroll}
-              loading={generating}
-              icon={<Calculator size={16} />}
-              className="w-full sm:w-auto"
-            >
-              Calculate Payroll
-            </Button>
-          </PermissionGate>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <PermissionGate permission="finance.manage">
+              <Button
+                onClick={runPayroll}
+                loading={generating}
+                icon={<Calculator size={16} />}
+                className="w-full sm:w-auto"
+              >
+                Calculate Payroll
+              </Button>
+            </PermissionGate>
+            <PermissionGate permission="finance.mark_paid">
+              {hasCalculatedEntries && stats.pendingLines.length > 0 && (
+                <Button
+                  onClick={handleMarkAllPaid}
+                  loading={bulkPaying}
+                  variant="secondary"
+                  icon={<Banknote size={16} />}
+                  className="w-full sm:w-auto"
+                >
+                  Mark all paid ({formatGBP(stats.pendingTotal)})
+                </Button>
+              )}
+            </PermissionGate>
+          </div>
         </div>
+
+        {!hasCalculatedEntries && !loading && (
+          <p className="mt-3 text-xs text-amber-500">
+            Run Calculate Payroll first to save amounts — then you can mark each person as paid.
+          </p>
+        )}
       </GlassCard>
+
+      <EmployeeSalaryCalculator yearMonth={yearMonth} />
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
@@ -111,7 +226,7 @@ export function Finance() {
           { label: 'Pending', value: formatGBP(stats.pending), icon: Clock, color: 'text-amber-500' },
           {
             label: 'People',
-            value: `${stats.paidCount}/${stats.count} paid`,
+            value: `${stats.paidCount}/${stats.calculatedCount || stats.count} paid`,
             icon: RefreshCw,
           },
         ].map((card) => (
@@ -160,14 +275,28 @@ export function Finance() {
                       {line.employee.employeeId} · {line.employee.jobTitle}
                     </p>
                     {line.configured ? (
-                      <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                        {line.employmentType &&
-                          EMPLOYMENT_TYPE_LABELS[line.employmentType]}{' '}
-                        ·{' '}
-                        {line.paymentMethod &&
-                          PAYMENT_METHOD_LABELS[line.paymentMethod]}{' '}
-                        · {formatPaySummary(line)}
-                      </p>
+                      <>
+                        <p className="mt-1 flex flex-wrap items-center gap-3 text-xs text-[var(--text-secondary)]">
+                          <span className="inline-flex items-center gap-1">
+                            <CalendarDays size={11} />
+                            {line.daysWorked} day{line.daysWorked !== 1 ? 's' : ''} worked
+                          </span>
+                          {line.paymentMethod === 'hourly' && (
+                            <span className="inline-flex items-center gap-1">
+                              <Clock size={11} />
+                              {line.hoursWorked}h worked
+                            </span>
+                          )}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                          {line.employmentType &&
+                            EMPLOYMENT_TYPE_LABELS[line.employmentType]}{' '}
+                          ·{' '}
+                          {line.paymentMethod &&
+                            PAYMENT_METHOD_LABELS[line.paymentMethod]}{' '}
+                          · {formatPaySummary(line)}
+                        </p>
+                      </>
                     ) : (
                       <p className="mt-1 text-xs text-amber-500">
                         Pay not configured — update person details
@@ -178,38 +307,46 @@ export function Finance() {
                     <p className="text-lg font-semibold text-[var(--text-primary)]">
                       {line.configured ? formatGBP(line.grossPay) : '—'}
                     </p>
-                    {line.configured && (
+                    {line.configured && line.entryId && (
                       <Badge color={line.status === 'paid' ? '#059669' : '#d97706'}>
                         {line.status === 'paid' ? 'Paid' : 'Pending'}
                       </Badge>
                     )}
+                    {line.configured && !line.entryId && (
+                      <Badge color="#64748b">Not calculated</Badge>
+                    )}
                   </div>
                 </div>
 
+                <PaymentRecordSummary line={line} />
+
                 {line.configured && line.entryId && can('finance.mark_paid') && (
-                  <button
-                    onClick={() => handleTogglePaid(line.entryId!, line.status)}
-                    disabled={updatingId === line.entryId}
-                    className="mt-2 flex items-center gap-1.5 text-xs text-asahi-blue hover:underline cursor-pointer border-0 bg-transparent p-0 min-h-[44px] disabled:opacity-50"
-                  >
-                    <CheckCircle2 size={12} />
-                    {updatingId === line.entryId
-                      ? 'Updating...'
-                      : line.status === 'paid'
-                        ? 'Mark as pending'
-                        : 'Mark as paid'}
-                  </button>
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    {line.status === 'pending' ? (
+                      <button
+                        onClick={() => setMarkPaidLine(line)}
+                        disabled={updatingId === line.entryId || bulkPaying}
+                        className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:underline cursor-pointer border-0 bg-transparent p-0 min-h-[44px] disabled:opacity-50 dark:text-emerald-400"
+                      >
+                        <Banknote size={12} />
+                        {updatingId === line.entryId ? 'Recording...' : `Mark ${formatGBP(line.grossPay)} as paid`}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleMarkPending(line)}
+                        disabled={updatingId === line.entryId || bulkPaying}
+                        className="flex items-center gap-1.5 text-xs text-asahi-blue hover:underline cursor-pointer border-0 bg-transparent p-0 min-h-[44px] disabled:opacity-50"
+                      >
+                        <CheckCircle2 size={12} />
+                        {updatingId === line.entryId ? 'Updating...' : 'Mark as pending'}
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 {line.configured && !line.entryId && can('finance.manage') && (
                   <p className="mt-2 text-xs text-[var(--text-muted)]">
-                    Run payroll to save this calculation
-                  </p>
-                )}
-
-                {line.status === 'paid' && line.paidAt && (
-                  <p className="mt-1 text-xs text-[var(--text-muted)]">
-                    Paid on {formatUKDate(line.paidAt)}
+                    Calculate payroll to save this amount, then mark as paid when sent
                   </p>
                 )}
               </motion.div>
@@ -217,6 +354,16 @@ export function Finance() {
           </div>
         )}
       </GlassCard>
+
+      {markPaidLine && (
+        <MarkPaidModal
+          line={markPaidLine}
+          periodLabel={periodLabel}
+          recordedBy={recordedBy}
+          onClose={() => setMarkPaidLine(null)}
+          onConfirm={(input) => handleRecordPayment(markPaidLine, input)}
+        />
+      )}
     </div>
   )
 }
