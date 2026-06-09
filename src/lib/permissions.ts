@@ -156,7 +156,10 @@ export const NAV_ITEMS_CONFIG = [
 export type RolePermissionMap = Record<string, Permission[]>
 
 export function getUserRoleSlug(user: AuthUser): string {
-  return user.roleSlug ?? user.role?.slug ?? 'manager'
+  if (user.roleSlug) return user.roleSlug
+  const role = user.role as AuthUser['role'] | string | undefined
+  if (typeof role === 'string') return role
+  return role?.slug ?? 'manager'
 }
 
 export function getUserRoleRank(user: AuthUser): number {
@@ -164,7 +167,12 @@ export function getUserRoleRank(user: AuthUser): number {
 }
 
 export function isSuperAdmin(user: AuthUser): boolean {
-  return getUserRoleSlug(user) === 'super_admin' || Boolean(user.role?.isSystem && user.role.slug === 'super_admin')
+  const slug = getUserRoleSlug(user)
+  if (slug === 'super_admin') return true
+  const role = user.role
+  return Boolean(
+    role && typeof role === 'object' && (role.isSystem || role.slug === 'super_admin'),
+  )
 }
 
 export function resolvePermissions(
