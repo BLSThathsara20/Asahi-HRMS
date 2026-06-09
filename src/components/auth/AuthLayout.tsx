@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { ThemeToggle } from '../ui/ThemeToggle'
 import { Logo } from '../Logo'
-import { COMPANY_NAME } from '../../lib/brand'
+import { SiteFooter } from '../layout/SiteFooter'
 
 interface AuthLayoutProps {
   children: ReactNode
@@ -31,9 +31,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
 
         <div className="glass-strong rounded-2xl p-6">{children}</div>
 
-        <p className="mt-6 text-center text-xs text-white/50">
-          {COMPANY_NAME} · United Kingdom
-        </p>
+        <SiteFooter variant="auth" className="mt-6" />
       </motion.div>
     </div>
   )
