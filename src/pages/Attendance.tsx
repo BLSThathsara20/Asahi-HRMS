@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LogIn, LogOut, Search, CheckCircle2, Clock, MapPin } from 'lucide-react'
 import { Header } from '../components/layout/Header'
@@ -22,35 +22,21 @@ export function Attendance() {
   const { can } = usePermissions()
   const { user } = useAuth()
   const canManage = can('attendance.manage')
-  const selfOnly = Boolean(user && can('attendance.view') && !canManage)
   const { employees, loading: empLoading } = useEmployees()
   const { todayRecords, actionLoading, error, signIn, signOut } = useAttendance()
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const filtered = useMemo(() => {
-    const base = selfOnly && user
-      ? employees.filter((e) => e._id === user._id)
-      : employees
-
+  const filtered = employees.filter((e) => {
     const q = search.toLowerCase()
-    if (!q) return base
-
-    return base.filter(
-      (e) =>
-        e.firstName.toLowerCase().includes(q) ||
-        e.lastName.toLowerCase().includes(q) ||
-        e.employeeId.toLowerCase().includes(q) ||
-        getDepartmentLabel(e.department).toLowerCase().includes(q),
+    return (
+      e.firstName.toLowerCase().includes(q) ||
+      e.lastName.toLowerCase().includes(q) ||
+      e.employeeId.toLowerCase().includes(q) ||
+      getDepartmentLabel(e.department).toLowerCase().includes(q)
     )
-  }, [employees, search, selfOnly, user])
-
-  useEffect(() => {
-    if (selfOnly && user) {
-      setSelectedId(user._id)
-    }
-  }, [selfOnly, user])
+  })
 
   const getStatus = (employeeId: string) =>
     todayRecords.find((r) => r.employee._id === employeeId)
@@ -86,11 +72,7 @@ export function Attendance() {
     <div>
       <Header
         title="Sign In / Out"
-        subtitle={
-          selfOnly
-            ? 'Clock yourself in and out — UK time (Europe/London)'
-            : 'Clock in and out — UK time (Europe/London)'
-        }
+        subtitle="Clock in and out — UK time (Europe/London)"
       />
 
       <AnimatePresence>
@@ -113,67 +95,65 @@ export function Attendance() {
         </div>
       )}
 
-      <div className={`grid grid-cols-1 gap-4 ${selfOnly ? '' : 'lg:grid-cols-5'}`}>
-        {!selfOnly && (
-          <GlassCard strong className="order-2 p-4 lg:order-1 lg:col-span-2">
-            <div className="relative mb-4">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-              />
-              <input
-                type="text"
-                placeholder="Search by name, ID or department..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-xl border border-white/20 bg-white/10 py-2.5 pl-9 pr-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-asahi-blue/50"
-              />
-            </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <GlassCard strong className="order-2 p-4 lg:order-1 lg:col-span-2">
+          <div className="relative mb-4">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+            />
+            <input
+              type="text"
+              placeholder="Search by name, ID or department..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-xl border border-white/20 bg-white/10 py-2.5 pl-9 pr-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-asahi-blue/50"
+            />
+          </div>
 
-            <div className="max-h-[50vh] space-y-2 overflow-y-auto lg:max-h-[480px]">
-              {empLoading ? (
-                <p className="text-sm text-[var(--text-muted)]">Loading people...</p>
-              ) : (
-                filtered.map((employee) => {
-                  const status = getStatus(employee._id)
-                  const isSelected = selectedId === employee._id
+          <div className="max-h-[50vh] space-y-2 overflow-y-auto lg:max-h-[480px]">
+            {empLoading ? (
+              <p className="text-sm text-[var(--text-muted)]">Loading people...</p>
+            ) : (
+              filtered.map((employee) => {
+                const status = getStatus(employee._id)
+                const isSelected = selectedId === employee._id
 
-                  return (
-                    <motion.button
-                      key={employee._id}
-                      onClick={() => setSelectedId(employee._id)}
-                      whileTap={{ scale: 0.98 }}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition-all cursor-pointer border-0 min-h-[56px] ${
-                        isSelected
-                          ? 'bg-asahi-blue/20 ring-1 ring-asahi-blue/40'
-                          : 'bg-white/5 hover:bg-white/10'
-                      }`}
-                    >
-                      <EmployeeAvatar employee={employee} />
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-medium text-[var(--text-primary)]">
-                          {employee.firstName} {employee.lastName}
-                        </p>
-                        <p className="text-xs text-[var(--text-muted)]">
-                          {employee.employeeId} · {getDepartmentLabel(employee.department)}
-                        </p>
-                      </div>
-                      {status && (
-                        <Badge color={status.status === 'signed_in' ? '#059669' : '#64748b'}>
-                          {status.status === 'signed_in' ? 'In' : 'Out'}
-                        </Badge>
-                      )}
-                    </motion.button>
-                  )
-                })
-              )}
-            </div>
-          </GlassCard>
-        )}
+                return (
+                  <motion.button
+                    key={employee._id}
+                    onClick={() => setSelectedId(employee._id)}
+                    whileTap={{ scale: 0.98 }}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition-all cursor-pointer border-0 min-h-[56px] ${
+                      isSelected
+                        ? 'bg-asahi-blue/20 ring-1 ring-asahi-blue/40'
+                        : 'bg-white/5 hover:bg-white/10'
+                    }`}
+                  >
+                    <EmployeeAvatar employee={employee} />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                        {employee.firstName} {employee.lastName}
+                      </p>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {employee.employeeId} · {getDepartmentLabel(employee.department)}
+                      </p>
+                    </div>
+                    {status && (
+                      <Badge color={status.status === 'signed_in' ? '#059669' : '#64748b'}>
+                        {status.status === 'signed_in' ? 'In' : 'Out'}
+                      </Badge>
+                    )}
+                  </motion.button>
+                )
+              })
+            )}
+          </div>
+        </GlassCard>
 
         <GlassCard
           strong
-          className={`order-1 flex min-h-[280px] flex-col items-center justify-center p-6 sm:p-8 lg:order-2 lg:min-h-[400px] ${selfOnly ? '' : 'lg:col-span-3'}`}
+          className="order-1 flex min-h-[280px] flex-col items-center justify-center p-6 sm:p-8 lg:order-2 lg:col-span-3 lg:min-h-[400px]"
         >
           {selected ? (
             <motion.div
@@ -202,7 +182,7 @@ export function Attendance() {
                 <AttendanceLocationDisplay record={selectedStatus} />
               )}
 
-              {(canManage || (selfOnly && selected._id === user?._id)) ? (
+              {canManage ? (
                 <div className="mt-8 flex w-full flex-col gap-3">
                   <p className="flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)]">
                     <MapPin size={12} />

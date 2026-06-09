@@ -35,7 +35,7 @@ export function ProtectedRoute() {
 }
 
 export function PublicOnlyRoute() {
-  const { user, loading, hasUsers, roleConfigs } = useAuth()
+  const { user, loading, hasUsers } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -57,7 +57,7 @@ export function PublicOnlyRoute() {
   }
 
   if (user) {
-    return <Navigate to={getFirstAllowedRoute(user, roleConfigs)} replace />
+    return <Navigate to="/" replace />
   }
 
   return <Outlet />

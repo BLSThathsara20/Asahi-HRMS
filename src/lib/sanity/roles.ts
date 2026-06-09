@@ -31,14 +31,6 @@ export const SYSTEM_ROLE_SEEDS: Omit<RoleConfig, '_id' | 'updatedAt'>[] = [
     isSystem: true,
     permissions: DEFAULT_ROLE_PERMISSIONS.manager as Permission[],
   },
-  {
-    slug: 'worker',
-    name: 'Worker',
-    color: '#64748b',
-    rank: 1,
-    isSystem: true,
-    permissions: DEFAULT_ROLE_PERMISSIONS.worker as Permission[],
-  },
 ]
 
 const ROLE_FIELDS = `_id, slug, name, color, permissions, isSystem, rank, updatedAt, role`
@@ -77,30 +69,20 @@ export async function fetchRoleConfigs(): Promise<RoleConfig[]> {
   }
 
   const normalized = configs.map(normalizeRoleConfig)
-  return ensureMissingSystemRoles(normalized)
+  return fillMissingSystemRoles(normalized)
 }
 
-async function ensureMissingSystemRoles(configs: RoleConfig[]): Promise<RoleConfig[]> {
+function fillMissingSystemRoles(configs: RoleConfig[]): RoleConfig[] {
   const result = [...configs]
-  const now = new Date().toISOString()
-
   for (const seed of SYSTEM_ROLE_SEEDS) {
-    if (result.find((c) => c.slug === seed.slug)) continue
-
-    const doc = await getSanityClient().create({
-      _type: 'roleConfig',
-      slug: seed.slug,
-      name: seed.name,
-      color: seed.color,
-      rank: seed.rank,
-      isSystem: seed.isSystem,
-      permissions: seed.permissions,
-      role: seed.slug,
-      updatedAt: now,
-    })
-    result.push({ ...seed, _id: doc._id, updatedAt: now })
+    if (!result.find((c) => c.slug === seed.slug)) {
+      result.push({
+        ...seed,
+        _id: `default-${seed.slug}`,
+        updatedAt: new Date().toISOString(),
+      })
+    }
   }
-
   return result.sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name))
 }
 
