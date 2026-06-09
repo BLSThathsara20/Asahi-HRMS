@@ -54,6 +54,7 @@ export function Attendance() {
     ? todayRecords.find((r) => r.employee._id === user._id)
     : undefined
   const isSignedIn = myStatus?.status === 'signed_in'
+  const isDayComplete = myStatus?.status === 'signed_out'
 
   const showSuccess = (message: string, action: 'in' | 'out') => {
     setSuccess(message)
@@ -249,9 +250,11 @@ export function Attendance() {
                 <Clock size={14} className={office.statusIconColor} />
               </motion.span>
               <span className={`font-medium ${office.statusTextColor}`}>
-                {isSignedIn && myStatus
-                  ? `On site since ${formatUKTime(myStatus.signInTime)}`
-                  : 'Not signed in today'}
+                {isDayComplete && myStatus
+                  ? `Done for today · ${formatUKTime(myStatus.signInTime)} – ${formatUKTime(myStatus.signOutTime!)}`
+                  : isSignedIn && myStatus
+                    ? `On site since ${formatUKTime(myStatus.signInTime)}`
+                    : 'Not signed in today'}
               </span>
             </motion.div>
 
@@ -270,7 +273,24 @@ export function Attendance() {
               </p>
 
               <AnimatePresence mode="wait">
-                {!isSignedIn ? (
+                {isDayComplete ? (
+                  <motion.div
+                    key="complete"
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+                    className="flex flex-col items-center gap-2 rounded-2xl bg-emerald-500/10 px-4 py-5"
+                  >
+                    <CheckCircle2 size={28} className="text-emerald-500" />
+                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                      Attendance complete for today
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      One sign in and one sign out per day
+                    </p>
+                  </motion.div>
+                ) : !isSignedIn ? (
                   <motion.div
                     key="sign-in"
                     initial={{ opacity: 0, x: -20 }}

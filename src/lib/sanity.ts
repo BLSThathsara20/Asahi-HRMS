@@ -441,9 +441,10 @@ export async function signInEmployee(
     if (!employee) throw new Error('Employee not found')
 
     const existing = MOCK_ATTENDANCE.find(
-      (a) => a.employee._id === employeeId && a.date === today && a.status === 'signed_in',
+      (a) => a.employee._id === employeeId && a.date === today,
     )
-    if (existing) throw new Error('Already signed in today')
+    if (existing?.status === 'signed_in') throw new Error('Already signed in today')
+    if (existing) throw new Error('You have already signed in and out today')
 
     const record: AttendanceRecord = {
       _id: `att-${Date.now()}`,
@@ -457,11 +458,12 @@ export async function signInEmployee(
     return record
   }
 
-  const existing = await getClient().fetch(
-    `*[_type == "attendance" && employee._ref == $employeeId && date == $today && status == "signed_in"][0]`,
+  const existing = await getClient().fetch<{ status: AttendanceStatus } | null>(
+    `*[_type == "attendance" && employee._ref == $employeeId && date == $today][0] { status }`,
     { employeeId, today },
   )
-  if (existing) throw new Error('Already signed in today')
+  if (existing?.status === 'signed_in') throw new Error('Already signed in today')
+  if (existing) throw new Error('You have already signed in and out today')
 
   const doc = await getClient().create({
     _type: 'attendance',
@@ -489,12 +491,31 @@ export async function signOutEmployee(
   if (!isSanityConfigured) {
     const record = MOCK_ATTENDANCE.find((a) => a._id === attendanceId)
     if (!record) throw new Error('Attendance record not found')
-    if (record.status === 'signed_out') throw new Error('Already signed out')
+    if (record.status !== 'signed_in') {
+      throw new Error(
+        record.status === 'signed_out'
+          ? 'You have already signed out today'
+          : 'Cannot sign out — attendance needs to be fixed first',
+      )
+    }
 
     record.signOutTime = now
     record.status = 'signed_out'
     record.signOutLocation = signOutLocation
     return record
+  }
+
+  const current = await getClient().fetch<{ status: AttendanceStatus } | null>(
+    `*[_type == "attendance" && _id == $id][0] { status }`,
+    { id: attendanceId },
+  )
+  if (!current) throw new Error('Attendance record not found')
+  if (current.status !== 'signed_in') {
+    throw new Error(
+      current.status === 'signed_out'
+        ? 'You have already signed out today'
+        : 'Cannot sign out — attendance needs to be fixed first',
+    )
   }
 
   await getClient()
