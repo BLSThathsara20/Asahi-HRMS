@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LogIn, Eye, EyeOff, Phone, KeyRound, ArrowLeft } from 'lucide-react'
 import { AuthLayout } from '../components/auth/AuthLayout'
@@ -25,6 +25,13 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const passwordInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (step !== 'password') return
+    const timer = setTimeout(() => passwordInputRef.current?.focus(), 100)
+    return () => clearTimeout(timer)
+  }, [step])
 
   const resetToEmail = () => {
     setStep('email')
@@ -228,6 +235,7 @@ export function Login() {
               </label>
               <div className="relative">
                 <input
+                  ref={passwordInputRef}
                   required
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
