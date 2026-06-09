@@ -15,7 +15,6 @@ import { useDepartments } from '../hooks/useDepartments'
 import { usePermissions } from '../hooks/usePermissions'
 import { isSuperAdminEmployee } from '../lib/permissions'
 import { getDepartmentLabel } from '../lib/types'
-import { AttendanceLocationDisplay } from '../components/attendance/AttendanceLocationDisplay'
 import { formatUKTime } from '../lib/uk'
 import type { AttendanceRecord } from '../lib/types'
 
@@ -247,13 +246,6 @@ export function Dashboard() {
                                       ? ` · ${formatUKTime(record.signInTime)} – ${formatUKTime(record.signOutTime)}`
                                       : ` · In ${formatUKTime(record.signInTime)}`}
                                 </p>
-                                {isOnSite && (
-                                  <AttendanceLocationDisplay
-                                    record={record}
-                                    compact
-                                    adminOnly={false}
-                                  />
-                                )}
                               </div>
                             </div>
                             <Badge color={status.color}>
